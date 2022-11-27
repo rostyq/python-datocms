@@ -1,10 +1,11 @@
-from typing import Literal, TypedDict
+from typing import Literal, TypedDict, NewType
 
-from .relationships import FieldId, FieldSetId, ItemId, WorkflowId
+from ..types.relationships import FieldId, FieldSetId, ItemId, WorkflowId
 
 
 __all__ = [
-    "ItemType",
+    "ModelId",
+    "Model",
     "Attributes",
     "Id",
     "FieldId",
@@ -16,6 +17,7 @@ __all__ = [
     "Relationships",
 ]
 
+ModelId = NewType("ModelId", str)
 
 class Attributes(TypedDict):
     name: str
@@ -54,8 +56,11 @@ class Relationships(TypedDict):
     workflow: TypedDict("Workflow", {"data": WorkflowId}) | None
 
 
-class ItemType(TypedDict):
-    id: str
-    type: Literal["item_type"]
+ModelTypeName = Literal["item_type"]
+
+
+class Model(TypedDict):
+    id: ModelId
+    type: ModelTypeName
     attributes: Attributes
     relationships: Relationships

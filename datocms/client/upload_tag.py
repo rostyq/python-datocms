@@ -1,7 +1,7 @@
 from typing import Generator, Literal
 
 from .api import ClientAPI
-from ..types.api.upload_tag import UploadTag
+from ..upload_tag.types import UploadTag
 
 
 __all__ = ["ClientUploadTag"]

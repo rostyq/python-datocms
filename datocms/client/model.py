@@ -1,5 +1,5 @@
 from .api import ClientAPI
-from ..types.api.item_type import ItemType
+from ..model.types import Model
 
 
 __all__ = ["ClientModel"]
@@ -8,7 +8,7 @@ __all__ = ["ClientModel"]
 class ClientModel(ClientAPI):
     item_types_endpoint = ClientAPI.urljoin("item-types")
 
-    def list_models(self) -> list[ItemType]:
+    def list_models(self) -> list[Model]:
         response = self.session.get(self.item_types_endpoint, headers=self._api_headers())
         response.raise_for_status()
         return response.json()["data"]

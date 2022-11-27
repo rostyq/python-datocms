@@ -1,13 +1,13 @@
 from typing import Literal, TypedDict
 
-from .item_type import ItemType
+from ..model.types import Model
 
 
 __all__ = ["Payload", "Attributes", "JobResult"]
 
 
 class Payload(TypedDict):
-    data: ItemType
+    data: Model
 
 
 class Attributes(TypedDict):

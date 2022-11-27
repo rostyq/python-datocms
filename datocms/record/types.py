@@ -1,9 +1,10 @@
-from typing import Literal, TypedDict
+from typing import Literal, TypedDict, NewType
 
-from .relationships import CreatorRelationships, ItemTypeRelationships
+from ..types.relationships import CreatorRelationships, ItemTypeRelationships
 
+__all__ = ["Attributes", "Meta", "Record", "RecordId"]
 
-__all__ = ["Attributes", "Meta", "Record"]
+RecordId = NewType("RecordId", str)
 
 
 class Attributes(TypedDict):
@@ -30,9 +31,12 @@ class Relationships(CreatorRelationships, ItemTypeRelationships):
     pass
 
 
+RecordTypeName = Literal["item"]
+
+
 class Record(TypedDict):
-    id: str
-    type: Literal["item"]
+    id: RecordId
+    type: RecordTypeName
     attributes: Attributes
     meta: Meta
     relationships: Relationships

@@ -1,9 +1,8 @@
 from enum import Enum
-from typing import Generic
-from typing_extensions import Self, TypeVar, Protocol
+from typing import Generic, Self, TypeVar, Protocol
 from functools import wraps
 
-from .types import Node, NodeTypeName
+from .types import NodeTypeName, Node
 
 
 __all__ = [
@@ -55,7 +54,7 @@ class NodeType(Enum):
     THEMATIC_BREAK = "thematicBreak"
 
     @classmethod
-    def get_typename(cls, node: T) -> NodeTypeName:
+    def get_typename(cls, node: T):
         try:
             name = node["type"]
             assert name in cls._member_names_

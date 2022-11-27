@@ -1,7 +1,8 @@
-from typing import TypedDict, Literal
+from typing import TypedDict, Literal, NewType
 
 
 __all__ = [
+    "UploadTagId",
     "UploadTag",
     "ManualUploadTag",
     "SmartUploadTag",
@@ -9,12 +10,15 @@ __all__ = [
 ]
 
 
+UploadTagId = NewType("UploadTagId", str)
+
+
 class Attributes(TypedDict):
     name: str
 
 
 class UploadTag(TypedDict):
-    id: str
+    id: UploadTagId
     type: Literal["upload_tag", "upload_smart_tag"]
     attributes: Attributes
 

@@ -4,8 +4,8 @@ from typing import IO, Generator, Literal
 from .job import ClientJob
 
 from ..job import Job
-from ..types.upload import Metadata, Upload
-from ..types.record import Record
+from ..upload.types import Metadata, Upload
+from ..record.types import Record
 
 
 __all__ = ["ClientUpload"]

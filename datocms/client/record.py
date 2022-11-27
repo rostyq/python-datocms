@@ -2,7 +2,7 @@ from typing import Literal, Generator
 from urllib.parse import urljoin
 
 from .api import ClientAPI
-from ..types.api.record import Record
+from ..record.types import Record
 
 
 __all__ = ["ClientRecord"]

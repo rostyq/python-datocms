@@ -1,7 +1,7 @@
-from typing import TypedDict, Literal, Any
+from typing import TypedDict, Literal, Any, NewType
 
 from datocms.types.locale import Localized
-from .relationships import CreatorRelationships
+from ..types.relationships import CreatorRelationships
 
 
 __all__ = [
@@ -10,7 +10,11 @@ __all__ = [
     "Metadata",
     "Attributes",
     "Upload",
+    "UploadId",
+    "UploadTypeName"
 ]
+
+UploadId = NewType("UploadId", str)
 
 
 class Color(TypedDict):
@@ -61,8 +65,11 @@ class Attributes(TypedDict):
     colors: list[Color]
 
 
+UploadTypeName = Literal["upload"]
+
+
 class Upload(TypedDict):
-    id: str
-    type: Literal["upload"]
+    id: UploadId
+    type: UploadTypeName
     attributes: Attributes
     relationships: CreatorRelationships
