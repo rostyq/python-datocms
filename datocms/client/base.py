@@ -14,7 +14,7 @@ class ClientBase:
 
     def __init__(self, token: str | None = None):
         self.session = session = Session()
-        session.auth = DatoAuth(token or environ["DATO_API_TOKEN"])
+        session.auth = DatoAuth(token or environ["DATOCMS_API_TOKEN"])
         session.headers.update({"Accept": "application/json"})
 
     @classmethod

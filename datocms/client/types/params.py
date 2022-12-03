@@ -1,5 +1,4 @@
-from typing import Any, TypedDict
-from typing_extensions import NotRequired
+from typing import Any, TypedDict, NotRequired
 
 
 __all__ = ["Payload", "PayloadData", "PayloadGraphQL"]

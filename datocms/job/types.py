@@ -1,9 +1,12 @@
-from typing import Literal, TypedDict
+from typing import Literal, TypedDict, NewType
 
 from ..model.types import Model
 
 
-__all__ = ["Payload", "Attributes", "JobResult"]
+__all__ = ["Payload", "Attributes", "JobResult", "JobResultId"]
+
+
+JobResultId = NewType("JobResultId", str)
 
 
 class Payload(TypedDict):
@@ -17,5 +20,5 @@ class Attributes(TypedDict):
 
 class JobResult(TypedDict):
     type: Literal["job_result"]
-    id: str
+    id: JobResultId
     attributes: Attributes

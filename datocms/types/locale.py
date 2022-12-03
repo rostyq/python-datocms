@@ -1,10 +1,10 @@
 from typing import Literal, TypeVar
 
 
-__all__ = ["Locale", "Localized"]
+__all__ = ["DefaultLocale", "Localized"]
 
 
-Locale = Literal[
+DefaultLocale = Literal[
     "zh",
     "es",
     "hi",
@@ -515,4 +515,4 @@ Locale = Literal[
 
 T = TypeVar("T")
 
-Localized = dict[Locale, T]
+Localized = dict[DefaultLocale, T]

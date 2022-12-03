@@ -3,7 +3,7 @@ from typing import IO, Generator, Literal
 
 from .job import ClientJob
 
-from ..job import Job
+from ..job.job import Job
 from ..upload.types import Metadata, Upload
 from ..record.types import Record
 
