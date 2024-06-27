@@ -11,6 +11,7 @@ __all__ = [
     "CreatorId",
     "CreatorRelationships",
     "ItemTypeRelationships",
+    "Relationships",
 ]
 
 

@@ -3,8 +3,9 @@ from typing import IO, Generator, Literal
 
 from .job import ClientJob
 
+from ..types.relationships import CreatorId
 from ..job.job import Job
-from ..upload.types import Metadata, Upload
+from ..upload.types import Metadata, Upload, Localized
 from ..record.types import Record
 
 
@@ -29,7 +30,7 @@ class ClientUpload(ClientJob):
         copyright: str | None = None,
         author: str | None = None,
         notes: str | None = None,
-        default_field_metadata: dict[str, Metadata] | None = None,
+        default_field_metadata: Localized[Metadata] | None = None,
         tags: list[str] | None = None,
     ) -> Job:
         response = self.session.post(
@@ -71,6 +72,48 @@ class ClientUpload(ClientJob):
             f"{self.uploads_endpoint}/{id}", headers=self._api_headers()
         )
         return self._handle_data_response(response)
+
+    def update_upload(
+        self,
+        id: str,
+        path: str | None = None,
+        basename: str | None = None,
+        copyright: str | None = None,
+        author: str | None = None,
+        notes: str | None = None,
+        tags: list[str] | None = None,
+        default_field_metadata: Localized[Metadata] | None = None,
+        creator: CreatorId | None = None,
+    ) -> Job:
+        attributes = {}
+        if path is not None:
+            attributes["path"] = path
+        if basename is not None:
+            attributes["basename"] = basename
+        if copyright is not None:
+            attributes["copyright"] = copyright
+        if author is not None:
+            attributes["author"] = author
+        if notes is not None:
+            attributes["notes"] = notes
+        if tags is not None:
+            attributes["tags"] = tags
+        if default_field_metadata is not None:
+            attributes["default_field_metadata"] = default_field_metadata
+
+        relationships = {}
+        if creator is not None:
+            relationships["creator"] = {"data": creator}
+
+        response = self.session.post(
+            self.uploads_endpoint,
+            headers=self._api_headers() | self._upload_headers(),
+            json=self._api_update(
+                id, "upload", attributes=attributes, relationships=relationships
+            ),
+        )
+        data = self._handle_data_response(response)
+        return Job(client=self, id=data["id"])
 
     def delete_upload(self, id: str) -> Upload:
         response = self.session.delete(

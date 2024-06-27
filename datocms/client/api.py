@@ -5,7 +5,7 @@ from typing import Callable, Protocol, Generic, TypeVar, Generator
 
 from .base import ClientBase
 from .types import query
-from .types.params import PayloadData, Payload
+from .types.params import PayloadData, Payload, PayloadUpdate
 from .types.response import ArrayResult
 
 
@@ -67,6 +67,10 @@ class ClientAPI(ClientBase):
     @classmethod
     def _api_parameters(cls, type: str, **attributes) -> Payload:
         return cls._api_payload(PayloadData(type=type, attributes=attributes))
+
+    @classmethod
+    def _api_update(cls, id: str, type: str, **kwargs) -> Payload:
+        return cls._api_payload(PayloadUpdate(id=id, type=type) | kwargs)
 
     @staticmethod
     def _list_result_to_tuple(result: ArrayResult) -> tuple[list[T], int]:
