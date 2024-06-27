@@ -105,12 +105,16 @@ class ClientUpload(ClientJob):
         if creator is not None:
             relationships["creator"] = {"data": creator}
 
-        response = self.session.post(
-            self.uploads_endpoint,
+        attributes = {"attributes": attributes} if len(attributes) > 0 else {}
+        relationships = (
+            {"relationships": relationships} if len(relationships) > 0 else {}
+        )
+        kwargs = attributes | relationships
+
+        response = self.session.put(
+            f"{self.uploads_endpoint}/{id}",
             headers=self._api_headers() | self._upload_headers(),
-            json=self._api_update(
-                id, "upload", attributes=attributes, relationships=relationships
-            ),
+            json=self._api_update(id, "upload", **kwargs),
         )
         data = self._handle_data_response(response)
         return Job(client=self, id=data["id"])
