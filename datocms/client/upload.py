@@ -64,7 +64,7 @@ class ClientUpload(ClientJob):
             headers=self._api_headers() | self._upload_headers(),
         )
         data = self._handle_data_response(response)
-        return Job(self, data["id"])
+        return Job(client=self, id=data["id"])
 
     def get_upload(self, id: str) -> Upload:
         response = self.session.get(
