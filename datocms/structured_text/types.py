@@ -63,7 +63,7 @@ class Link(TypedDict):
     children: list[Span]
 
 
-ItemLinkTypeName = "itemLink"
+ItemLinkTypeName = Literal["itemLink"]
 
 
 class ItemLink(TypedDict):
@@ -76,7 +76,7 @@ class ItemLink(TypedDict):
 NodeWithMeta = Link | ItemLink
 
 
-InlineItemTypeName = "inlineItem"
+InlineItemTypeName = Literal["inlineItem"]
 
 
 class InlineItem(TypedDict):
@@ -179,8 +179,8 @@ class Document(TypedDict):
     document: Root
 
 
-R1 = TypeVar("R1", bound=Record)
-R2 = TypeVar("R2", bound=Record)
+R1 = TypeVar("R1")
+R2 = TypeVar("R2")
 
 
 class StructuredText(TypedDict, Generic[R1, R2]):
