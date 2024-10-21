@@ -37,7 +37,7 @@ class ClientGraphQL(ClientBase):
         self,
         query: str,
         environment: str | None = None,
-        include_drafts: bool | None = None,
+        include_drafts: bool = False,
         exclude_invalid: bool | None = None,
         **kwargs,
     ) -> dict[str]:
@@ -46,9 +46,9 @@ class ClientGraphQL(ClientBase):
 
         if environment is not None:
             request.headers["X-Environment"] = environment
-        if include_drafts is not None:
-            request.headers["X-Include-Drafts"] = include_drafts
-        if include_drafts is not None:
+        if include_drafts:
+            request.headers["X-Include-Drafts"] = True
+        if exclude_invalid is not None:
             request.headers["X-Exclude-Invalid"] = exclude_invalid
 
         response = self.session.send(request)
@@ -58,7 +58,7 @@ class ClientGraphQL(ClientBase):
         self,
         path: PathLike,
         environment: str | None = None,
-        include_drafts: bool | None = None,
+        include_drafts: bool = False,
         exclude_invalid: bool | None = None,
         **kwargs,
     ) -> dict[str]:
