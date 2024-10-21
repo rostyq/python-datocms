@@ -47,9 +47,9 @@ class ClientGraphQL(ClientBase):
         if environment is not None:
             request.headers["X-Environment"] = environment
         if include_drafts:
-            request.headers["X-Include-Drafts"] = True
+            request.headers["X-Include-Drafts"] = "true"
         if exclude_invalid is not None:
-            request.headers["X-Exclude-Invalid"] = exclude_invalid
+            request.headers["X-Exclude-Invalid"] = "true" if exclude_invalid else "false"
 
         response = self.session.send(request)
         return self._handle_data_response(response)
