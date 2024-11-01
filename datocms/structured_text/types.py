@@ -1,4 +1,12 @@
-from typing import Literal, TypedDict, Generic, TypeVar, NotRequired, Type, Union
+from typing import (
+    Literal,
+    TypedDict,
+    Generic,
+    TypeVar,
+    NotRequired,
+    Union,
+    Required,
+)
 
 
 ParagraphType = Literal["paragraph"]
@@ -29,8 +37,6 @@ NodeType = Union[
     SpanType,
     ThematicBreakType,
 ]
-
-
 RootNodeType = Union[
     ParagraphType,
     HeadingType,
@@ -40,33 +46,74 @@ RootNodeType = Union[
     BlockType,
     ThematicBreakType,
 ]
-
 CustomStyleBlockNodeType = Union[ParagraphType, HeadingType]
 InlineNodeType = Union[SpanType, LinkType, ItemLinkType, InlineItemType]
 MetaNodeType = Union[LinkType, ItemLinkType]
-ListItemNodeType = Union[ParagraphType, ListType]
+ListNodeType = Union[ParagraphType, ListType]
+ChildNodeType = Union[ListItemType, InlineNodeType]
+OptionalNodeType = Union[BlockquoteType, CodeType, HeadingType, LinkType, ListType, ThematicBreakType]
+BaseNodeType = Union[BlockType, ParagraphType]
 
 
 ListStyle = Literal["bulleted", "numbered"]
-DefaultMark = Literal[
+FormatMark = Literal[
     "strong", "code", "emphasis", "underline", "strikethrough", "highlight"
 ]
+HeaderLevel = Literal[1, 2, 3, 4, 5, 6]
 
 
-F = TypeVar("F", bound=DefaultMark, covariant=True, contravariant=False)
-T = TypeVar("T", bound=NodeType, covariant=True, contravariant=False)
-R = TypeVar("R", bound=RootNodeType, covariant=True, contravariant=False)
+F = TypeVar("F", bound=FormatMark, covariant=True, contravariant=False)
+R = TypeVar("R", bound=OptionalNodeType, covariant=True, contravariant=False)
+H = TypeVar("H", bound=HeaderLevel, covariant=True, contravariant=False)
 B = TypeVar("B")
 L = TypeVar("L")
-
-
-class Node(TypedDict, Generic[T]):
-    type: T
 
 
 class MetaEntry(TypedDict):
     id: str
     value: str
+
+
+class InlineNode(TypedDict, Generic[F], total=False):
+    type: Required[InlineNodeType]
+    item: str
+    value: str
+    url: str
+    marks: list[F]
+    meta: list[MetaEntry]
+    children: list["Span[F]"]
+
+
+class ChildNode(TypedDict, Generic[F], total=False):
+    type: Required[ChildNodeType]
+    item: str
+    value: str
+    url: str
+    marks: list[F]
+    style: str
+    meta: list[MetaEntry]
+    children: list[Union["ChildNode[F]", "ListNode[F]"]]
+
+
+class ListNode(TypedDict, Generic[F]):
+    type: ListNodeType
+    style: NotRequired[str]
+    children: list[ChildNode[F]]
+
+
+class RootNode(TypedDict, Generic[R, H, F], total=False):
+    type: Required[Union[BaseNodeType, R]]
+    item: str
+    value: str
+    url: str
+    attribution: str
+    level: H
+    style: str
+    code: str
+    language: str
+    highlight: list[int]
+    meta: list[MetaEntry]
+    children: list[ChildNode[F]]
 
 
 class ThematicBreak(TypedDict):
@@ -86,7 +133,7 @@ class Span(TypedDict, Generic[F]):
 
 class Paragraph(TypedDict, Generic[F]):
     type: ParagraphType
-    children: list[Span[F]]
+    children: list[InlineNode[F]]
 
 
 class Link(TypedDict, Generic[F]):
@@ -108,22 +155,22 @@ class InlineItem(TypedDict):
     item: str
 
 
-class Heading(TypedDict):
+class Heading(TypedDict, Generic[H, F]):
     type: HeadingType
-    level: Literal[1, 2, 3, 4, 5, 6]
+    level: H
     style: NotRequired[str]
-    children: list[Node[InlineNodeType]]
+    children: list[InlineNode[F]]
 
 
-class ListItem(TypedDict):
+class ListItem(TypedDict, Generic[F]):
     type: ListItemType
-    children: list[Node[ListItemNodeType]]
+    children: list[ListNode[F]]
 
 
-class List(TypedDict):
+class List(TypedDict, Generic[F]):
     type: ListType
     style: ListStyle
-    children: list[ListItem]
+    children: list[ListItem[F]]
 
 
 class Code(TypedDict):
@@ -133,23 +180,23 @@ class Code(TypedDict):
     highlight: NotRequired[list[int]]
 
 
-class Blockquote(TypedDict):
+class Blockquote(TypedDict, Generic[F]):
     type: BlockquoteType
-    children: list[Paragraph]
     attribution: NotRequired[str]
+    children: list[Paragraph[F]]
 
 
-class Root(TypedDict, Generic[R]):
+class Root(TypedDict, Generic[R, H, F]):
     type: Literal["root"]
-    children: list[Node[R]]
+    children: list[RootNode[R, H, F]]
 
 
-class Document(TypedDict, Generic[R]):
+class Document(TypedDict, Generic[R, H, F]):
     schema: Literal["dast"]
-    document: Root[R]
+    document: Root[R, H, F]
 
 
-class StructuredText(TypedDict, Generic[R, B, L]):
-    value: Document[R]
+class StructuredText(TypedDict, Generic[R, H, F, B, L]):
+    value: Document[R, H, F]
     blocks: NotRequired[list[B]]
     links: NotRequired[list[L]]

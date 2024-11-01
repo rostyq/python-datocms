@@ -2,7 +2,7 @@ from enum import Enum, global_enum
 from typing import Generic, Self, TypeVar, Protocol
 from functools import wraps
 
-from .types import NodeType, Node as _Node
+from .types import NodeType, RootNode as _Node
 
 
 __all__ = [
