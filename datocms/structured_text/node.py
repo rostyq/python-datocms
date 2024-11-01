@@ -1,12 +1,12 @@
-from enum import Enum
+from enum import Enum, global_enum
 from typing import Generic, Self, TypeVar, Protocol
 from functools import wraps
 
-from .types import NodeTypeName, Node
+from .types import NodeType, Node as _Node
 
 
 __all__ = [
-    "NodeType",
+    "Node",
     "ROOT",
     "PARAGRAPH",
     "SPAN",
@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-T = TypeVar("T", bound=Node)
+T = TypeVar("T", bound=_Node)
 A = TypeVar("A")
 K = TypeVar("K")
 R = TypeVar("R")
@@ -38,7 +38,8 @@ class NodeHandlerType(Protocol, Generic[T, A, K, R]):
 H = TypeVar("H", bound=NodeHandlerType)
 
 
-class NodeType(Enum):
+@global_enum
+class Node(Enum):
     ROOT = "root"
     PARAGRAPH = "paragraph"
     SPAN = "span"
@@ -69,7 +70,7 @@ class NodeType(Enum):
         return cls._value2member_map_[cls.get_typename(data)]
 
     @classmethod
-    def from_str(cls, name: NodeTypeName) -> Self:
+    def from_str(cls, name: NodeType) -> Self:
         try:
             return cls._value2member_map_[name]
         except KeyError:
@@ -89,16 +90,16 @@ class NodeType(Enum):
         return wrapper
 
 
-ROOT = NodeType.ROOT
-PARAGRAPH = NodeType.PARAGRAPH
-SPAN = NodeType.SPAN
-LINK = NodeType.LINK
-ITEM_LINK = NodeType.ITEM_LINK
-INLINE_ITEM = NodeType.INLINE_ITEM
-HEADING = NodeType.HEADING
-LIST = NodeType.LIST
-LIST_ITEM = NodeType.LIST_ITEM
-CODE = NodeType.CODE
-BLOCKQUOTE = NodeType.BLOCKQUOTE
-BLOCK = NodeType.BLOCK
-THEMATIC_BREAK = NodeType.THEMATIC_BREAK
+# ROOT = Node.ROOT
+# PARAGRAPH = Node.PARAGRAPH
+# SPAN = Node.SPAN
+# LINK = Node.LINK
+# ITEM_LINK = Node.ITEM_LINK
+# INLINE_ITEM = Node.INLINE_ITEM
+# HEADING = Node.HEADING
+# LIST = Node.LIST
+# LIST_ITEM = Node.LIST_ITEM
+# CODE = Node.CODE
+# BLOCKQUOTE = Node.BLOCKQUOTE
+# BLOCK = Node.BLOCK
+# THEMATIC_BREAK = Node.THEMATIC_BREAK

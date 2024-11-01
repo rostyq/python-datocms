@@ -1,51 +1,67 @@
-from typing import Literal, TypedDict, Generic, TypeVar, NotRequired, Type
-
-from ..record.types import Record, RecordId
+from typing import Literal, TypedDict, Generic, TypeVar, NotRequired, Type, Union
 
 
-HeadingTypeName = Literal["heading"]
+ParagraphType = Literal["paragraph"]
+SpanType = Literal["span"]
+LinkType = Literal["link"]
+ItemLinkType = Literal["itemLink"]
+InlineItemType = Literal["inlineItem"]
+HeadingType = Literal["heading"]
+ListType = Literal["list"]
+ListItemType = Literal["listItem"]
+CodeType = Literal["code"]
+BlockquoteType = Literal["blockquote"]
+BlockType = Literal["block"]
+ThematicBreakType = Literal["thematicBreak"]
 
 
-class Heading(TypedDict):
-    type: HeadingTypeName
-    level: Literal[1, 2, 3, 4, 5, 6]
-    style: NotRequired[str]
-    children: list[Type["InlineNode"]]
+NodeType = Union[
+    ParagraphType,
+    HeadingType,
+    LinkType,
+    ItemLinkType,
+    InlineItemType,
+    BlockType,
+    ListType,
+    ListItemType,
+    BlockquoteType,
+    CodeType,
+    SpanType,
+    ThematicBreakType,
+]
+
+
+RootNodeType = Union[
+    ParagraphType,
+    HeadingType,
+    ListType,
+    CodeType,
+    BlockquoteType,
+    BlockType,
+    ThematicBreakType,
+]
+
+CustomStyleBlockNodeType = Union[ParagraphType, HeadingType]
+InlineNodeType = Union[SpanType, LinkType, ItemLinkType, InlineItemType]
+MetaNodeType = Union[LinkType, ItemLinkType]
+ListItemNodeType = Union[ParagraphType, ListType]
 
 
 ListStyle = Literal["bulleted", "numbered"]
-ListTypeName = Literal["list"]
-
-
-class List(TypedDict):
-    type: ListTypeName
-    style: ListStyle
-    children: list[Type["ListItem"]]
-
-
-CodeTypeName = Literal["code"]
-
-
-class Code(TypedDict):
-    type: CodeTypeName
-    code: str
-    language: NotRequired[str]
-    highlight: NotRequired[list[int]]
-
-
 DefaultMark = Literal[
     "strong", "code", "emphasis", "underline", "strikethrough", "highlight"
 ]
 
 
-Sm = TypeVar("Sm", bound=DefaultMark)
-SpanTypeName = Literal["span"]
+F = TypeVar("F", bound=DefaultMark, covariant=True, contravariant=True)
+T = TypeVar("T", bound=NodeType, covariant=True, contravariant=False)
+R = TypeVar("R", bound=RootNodeType, covariant=True, contravariant=False)
+B = TypeVar("B")
+L = TypeVar("L")
 
 
-class Span(TypedDict, Generic[Sm]):
-    type: SpanTypeName
-    value: str
-    marks: NotRequired[list[Sm]]
+class Node(TypedDict, Generic[T]):
+    type: T
 
 
 class MetaEntry(TypedDict):
@@ -53,137 +69,87 @@ class MetaEntry(TypedDict):
     value: str
 
 
-LinkTypeName = Literal["link"]
+class ThematicBreak(TypedDict):
+    type: ThematicBreakType
 
 
-class Link(TypedDict):
-    type: LinkTypeName
+class Block(TypedDict):
+    type: BlockType
+    item: str
+
+
+class Span(TypedDict, Generic[F]):
+    type: SpanType
+    value: str
+    marks: NotRequired[list[F]]
+
+
+class Paragraph(TypedDict, Generic[F]):
+    type: ParagraphType
+    children: list[Span[F]]
+
+
+class Link(TypedDict, Generic[F]):
+    type: LinkType
     url: str
     meta: NotRequired[list[MetaEntry]]
-    children: list[Span]
+    children: list[Span[F]]
 
 
-ItemLinkTypeName = Literal["itemLink"]
-
-
-class ItemLink(TypedDict):
-    type: ItemLinkTypeName
-    item: RecordId
+class ItemLink(TypedDict, Generic[F]):
+    type: ItemLinkType
+    item: str
     meta: NotRequired[MetaEntry]
-    children: list[Span]
-
-
-NodeWithMeta = Link | ItemLink
-
-
-InlineItemTypeName = Literal["inlineItem"]
+    children: list[Span[F]]
 
 
 class InlineItem(TypedDict):
-    type: InlineItemTypeName
-    item: RecordId
+    type: InlineItemType
+    item: str
 
 
-InlineNode = Span | Link | ItemLink | InlineItem
-
-
-ParagraphTypeName = Literal["paragraph"]
-
-
-class Paragraph(TypedDict):
-    type: ParagraphTypeName
-    children: list[Span]
-
-
-BlockNodeWithCustomStyle = Paragraph | Heading
-
-BlockNodeTypeWithCustomStyle = ParagraphTypeName | HeadingTypeName
-
-
-ListItemTypeName = Literal["listItem"]
+class Heading(TypedDict):
+    type: HeadingType
+    level: Literal[1, 2, 3, 4, 5, 6]
+    style: NotRequired[str]
+    children: list[Node[InlineNodeType]]
 
 
 class ListItem(TypedDict):
-    type: ListItemTypeName
-    children: list[Paragraph | List]
+    type: ListItemType
+    children: list[Node[ListItemNodeType]]
 
 
-BlockquoteTypeName = Literal["blockquote"]
+class List(TypedDict):
+    type: ListType
+    style: ListStyle
+    children: list[ListItem]
+
+
+class Code(TypedDict):
+    type: CodeType
+    code: str
+    language: NotRequired[str]
+    highlight: NotRequired[list[int]]
 
 
 class Blockquote(TypedDict):
-    type: BlockquoteTypeName
+    type: BlockquoteType
     children: list[Paragraph]
     attribution: NotRequired[str]
 
 
-BlockTypeName = Literal["block"]
-Rb = TypeVar("Rb", RecordId, Record, covariant=True)
+class Root(TypedDict, Generic[R]):
+    type: Literal["root"]
+    children: list[Node[R]]
 
 
-class Block(TypedDict, Generic[Rb]):
-    type: BlockTypeName
-    item: Rb
-
-
-ThematicBreakTypeName = Literal["thematicBreak"]
-
-
-class ThematicBreak(TypedDict):
-    type: ThematicBreakTypeName
-
-
-RootTypeName = Literal["root"]
-
-
-class Root(TypedDict):
-    type: RootTypeName
-    children: list[
-        Paragraph | Heading | List | Code | Blockquote | Block | ThematicBreak
-    ]
-
-
-NodeTypeName = (
-    ParagraphTypeName
-    | HeadingTypeName
-    | LinkTypeName
-    | ItemLinkTypeName
-    | InlineItemTypeName
-    | BlockTypeName
-    | ListTypeName
-    | ListItemTypeName
-    | BlockquoteTypeName
-    | CodeTypeName
-    | RootTypeName
-    | SpanTypeName
-    | ThematicBreakTypeName
-)
-
-BlockNode = (
-    Root
-    | Paragraph
-    | Heading
-    | Block
-    | List
-    | ListItem
-    | Blockquote
-    | Code
-    | ThematicBreak
-)
-
-Node = BlockNode | InlineNode
-
-
-class Document(TypedDict):
+class Document(TypedDict, Generic[R]):
     schema: Literal["dast"]
-    document: Root
+    document: Root[R]
 
 
-R1 = TypeVar("R1")
-R2 = TypeVar("R2")
-
-
-class StructuredText(TypedDict, Generic[R1, R2]):
-    value: Document
-    blocks: NotRequired[list[R1]]
-    links: NotRequired[list[R2]]
+class StructuredText(TypedDict, Generic[R, B, L]):
+    value: Document[R]
+    blocks: NotRequired[list[B]]
+    links: NotRequired[list[L]]
