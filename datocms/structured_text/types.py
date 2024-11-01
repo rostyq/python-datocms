@@ -53,7 +53,7 @@ DefaultMark = Literal[
 ]
 
 
-F = TypeVar("F", bound=DefaultMark, covariant=True, contravariant=True)
+F = TypeVar("F", bound=DefaultMark, covariant=True, contravariant=False)
 T = TypeVar("T", bound=NodeType, covariant=True, contravariant=False)
 R = TypeVar("R", bound=RootNodeType, covariant=True, contravariant=False)
 B = TypeVar("B")
