@@ -84,6 +84,13 @@ class InlineNode(TypedDict, Generic[F], total=False):
     children: list["Span[F]"]
 
 
+class ItemNode(TypedDict, Generic[F], total=False):
+    type: Required[Union[SpanType, ListNodeType]]
+    value: str
+    marks: list[F]
+    children: list["ChildNode[F]"]
+
+
 class ChildNode(TypedDict, Generic[F], total=False):
     type: Required[ChildNodeType]
     item: str
@@ -92,7 +99,7 @@ class ChildNode(TypedDict, Generic[F], total=False):
     marks: list[F]
     style: str
     meta: list[MetaEntry]
-    children: list[Union["ChildNode[F]", "ListNode[F]"]]
+    children: list[ItemNode[F]]
 
 
 class ListNode(TypedDict, Generic[F]):
