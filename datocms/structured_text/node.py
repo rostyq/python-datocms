@@ -88,18 +88,3 @@ class Node(Enum):
             return func(self.check(node), *args, **kwargs)
 
         return wrapper
-
-
-# ROOT = Node.ROOT
-# PARAGRAPH = Node.PARAGRAPH
-# SPAN = Node.SPAN
-# LINK = Node.LINK
-# ITEM_LINK = Node.ITEM_LINK
-# INLINE_ITEM = Node.INLINE_ITEM
-# HEADING = Node.HEADING
-# LIST = Node.LIST
-# LIST_ITEM = Node.LIST_ITEM
-# CODE = Node.CODE
-# BLOCKQUOTE = Node.BLOCKQUOTE
-# BLOCK = Node.BLOCK
-# THEMATIC_BREAK = Node.THEMATIC_BREAK
