@@ -1,8 +1,9 @@
-from typing import TypedDict, Literal
+from typing import TypedDict, Literal, Any
 
 
 __all__ = [
     "Id",
+    "Item",
     "ItemId",
     "ItemTypeId",
     "FieldId",
@@ -57,3 +58,10 @@ class CreatorRelationships(TypedDict):
 
 class ItemTypeRelationships(TypedDict):
     item_type: ItemType
+
+
+class Item(TypedDict):
+    id: str
+    type: Literal["item"]
+    attributes: dict[str, Any]
+    relationships: ItemTypeRelationships

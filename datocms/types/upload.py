@@ -1,7 +1,7 @@
 from typing import TypedDict, Literal, Any, NewType
 
 from datocms.types.locale import Localized
-from ..types.relationships import CreatorRelationships
+from .relationships import CreatorRelationships
 
 
 __all__ = [
@@ -11,7 +11,14 @@ __all__ = [
     "Attributes",
     "Upload",
     "UploadId",
-    "UploadTypeName"
+    "UploadTypeName",
+    "UploadTagId",
+    "UploadTag",
+    "UploadPermission",
+    "UploadPermissionAttributes",
+    "ManualUploadTag",
+    "SmartUploadTag",
+    "Attributes"
 ]
 
 UploadId = NewType("UploadId", str)
@@ -73,3 +80,35 @@ class Upload(TypedDict):
     type: UploadTypeName
     attributes: Attributes
     relationships: CreatorRelationships
+
+
+UploadTagId = NewType("UploadTagId", str)
+
+
+class Attributes(TypedDict):
+    name: str
+
+
+class UploadTag(TypedDict):
+    id: UploadTagId
+    type: Literal["upload_tag", "upload_smart_tag"]
+    attributes: Attributes
+
+
+class ManualUploadTag(UploadTag):
+    type: Literal["upload_tag"]
+
+
+class SmartUploadTag(UploadTag):
+    type: Literal["upload_smart_tag"]
+
+
+class UploadPermissionAttributes(TypedDict):
+    url: str
+    request_headers: dict[str, str]
+
+
+class UploadPermission(TypedDict):
+    id: str
+    type: Literal["upload_request"]
+    attributes: UploadPermissionAttributes

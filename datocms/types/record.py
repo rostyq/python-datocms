@@ -1,6 +1,6 @@
 from typing import Literal, TypedDict, NewType
 
-from ..types.relationships import CreatorRelationships, ItemTypeRelationships
+from .relationships import CreatorRelationships, ItemTypeRelationships
 
 __all__ = ["Attributes", "Meta", "Record", "RecordId"]
 

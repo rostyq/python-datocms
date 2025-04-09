@@ -1,4 +1,6 @@
 from typing import Literal, TypedDict
+
+from . import DataField
 from .relationships import FieldSetId
 
 
@@ -17,12 +19,8 @@ class Attributes(TypedDict):
     default_value: bool | None | str | int | float | object
 
 
-class FieldSet(TypedDict):
-    data: FieldSetId
-
-
 class Relationships(TypedDict):
-    fieldset: FieldSet
+    fieldset: DataField[FieldSetId]
 
 
 class Field(TypedDict):
