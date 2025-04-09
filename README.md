@@ -1,5 +1,5 @@
 # python-datocms
 
-> Work In Progress
-
 Python Libary for DatoCMS.
+
+For examples see [notebook](readme.ipynb).
