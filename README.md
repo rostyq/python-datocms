@@ -1,5 +1,3 @@
 # python-datocms
 
-Python Libary for DatoCMS.
-
-For examples see [notebook](readme.ipynb).
+Python library for [DatoCMS](https://www.datocms.com). For examples see [notebook](readme.ipynb).
