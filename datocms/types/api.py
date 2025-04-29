@@ -25,6 +25,8 @@ __all__ = [
     "GraphqlResult",
     "GraphqlError",
     "ErrorLocation",
+    "ErrorExtensions",
+    "ErrorProblem",
 ]
 
 Version = Literal["published", "current"]
@@ -76,10 +78,25 @@ class ErrorLocation(TypedDict):
     column: int
 
 
+class ErrorProblem(TypedDict):
+    path: list[str]
+    explanation: str
+    message: str
+
+
+class ErrorExtensions(TypedDict, total=False):
+    code: str
+    value: str
+    typeName: str
+    fieldName: str
+    problems: list[ErrorProblem]
+
+
 class GraphqlError(TypedDict):
     message: str
     locations: NotRequired[list[ErrorLocation]]
-    path: list[str]
+    path: NotRequired[list[str]]
+    extensions: NotRequired[ErrorExtensions]
 
 
 class GraphqlResult(TypedDict):
