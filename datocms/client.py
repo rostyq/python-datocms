@@ -81,25 +81,48 @@ class DatoError(Exception):
 
 
 class DatoGraphqlError(DatoError):
-    def __init__(self, message: str, locations: list["ErrorLocation"], path: list[str]):
+    def __init__(
+        self,
+        message: str,
+        locations: list["ErrorLocation"],
+        path: list[str] | None = None,
+        extensions: "Optional[ErrorExtensions]" = None,
+    ):
         super().__init__()
         self.message = message
         self.locations = locations
         self.path = path
+        self.extensions = extensions
 
     @classmethod
     def from_dict(cls, data: "GraphqlError", /):
+        print(data)
         return cls(
             message=data["message"],
             locations=data["locations"],
-            path=data["path"],
+            path=data.get("path"),
+            extensions=data.get("extensions"),
         )
 
-    def _locations(self) -> str:
-        return ", ".join(f"{loc['line']}:{loc['column']}" for loc in self.locations)
+    def _fmt_locs(self) -> str:
+        if len(self.locations) == 1:
+            loc = self.locations[0]
+            return f"line {loc['line']}, column {loc['column']}"
+        else:
+            return ", ".join(f"{loc['line']}:{loc['column']}" for loc in self.locations)
+
+
+    def _fmt_path(self) -> str:
+        return ".".join(self.path) if self.path else ""
+
+    def _fmt_err(self) -> str:
+        return f"{self.message} at ({self._fmt_locs()})"
 
     def __str__(self):
-        return f"{self.message} at ({self._locations()}) in `{' > '.join(self.path)}`"
+        message_array = [self.message, "at", self._fmt_locs()]
+        if self.path:
+            message_array.extend(["in", self._fmt_path()])
+        return " ".join(message_array)
 
 
 class DatoApiError(DatoError):
@@ -377,7 +400,7 @@ class Client(BaseClient):
         include_drafts: bool = False,
         exclude_invalid: bool | None = None,
         timeout: "Optional[TimeoutTypes]" = None,
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any]:
         response = self._client.request(
             "POST",
             self.graphql_url,
@@ -400,7 +423,7 @@ class Client(BaseClient):
         include_drafts: bool = False,
         exclude_invalid: bool | None = None,
         timeout: "Optional[TimeoutTypes]" = None,
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any]:
         with open(path, "r") as fp:
             return self.execute(
                 fp.read(),
