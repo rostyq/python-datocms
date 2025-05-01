@@ -84,7 +84,7 @@ class DatoGraphqlError(DatoError):
     def __init__(
         self,
         message: str,
-        locations: list["ErrorLocation"],
+        locations: Optional[list["ErrorLocation"]] = None,
         path: list[str] | None = None,
         extensions: "Optional[ErrorExtensions]" = None,
     ):
@@ -96,16 +96,17 @@ class DatoGraphqlError(DatoError):
 
     @classmethod
     def from_dict(cls, data: "GraphqlError", /):
-        print(data)
         return cls(
-            message=data["message"],
-            locations=data["locations"],
+            message=data.get("message") or "",
+            locations=data.get("locations"),
             path=data.get("path"),
             extensions=data.get("extensions"),
         )
 
     def _fmt_locs(self) -> str:
-        if len(self.locations) == 1:
+        if self.locations is None:
+            return ""
+        elif len(self.locations) == 1:
             loc = self.locations[0]
             return f"line {loc['line']}, column {loc['column']}"
         else:
@@ -119,8 +120,10 @@ class DatoGraphqlError(DatoError):
         return f"{self.message} at ({self._fmt_locs()})"
 
     def __str__(self):
-        message_array = [self.message, "at", self._fmt_locs()]
-        if self.path:
+        message_array = [self.message]
+        if self.locations is not None:
+            message_array.extend(["at", self._fmt_locs()])
+        if self.path is not None:
             message_array.extend(["in", self._fmt_path()])
         return " ".join(message_array)
 
