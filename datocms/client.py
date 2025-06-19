@@ -12,6 +12,7 @@ from typing import (
     Optional,
     MutableMapping,
     Mapping,
+    Unpack,
 )
 from types import TracebackType
 from os import environ, PathLike
@@ -30,7 +31,27 @@ from httpx import (
 if TYPE_CHECKING:
     from httpx._types import TimeoutTypes
 
-    from .types.api import *
+    from .types.api import (
+        AnyVersion,
+        TagType,
+        Payload,
+        PayloadGraphQL,
+        ArrayResult,
+        GraphqlResult,
+        GraphqlError,
+        ErrorLocation,
+        ErrorExtensions,
+        ExecuteParams,
+        IterRecordsParams,
+        IterUploadsParams,
+        CreateUploadJobParams,
+        PollJobParams,
+        IterTagsParams,
+        ListRecordsWithPaginationParams,
+        ListUploadsWithPaginationParams,
+        ListTagsWithPaginationParams,
+        CreateUploadWithRetryParams,
+    )
     from .types.errors import ErrorAttributes, Error, ErrorCodeType
     from .types.record import Record
     from .types.model import Model
@@ -403,45 +424,30 @@ class Client(BaseClient):
     def execute(
         self,
         query: str,
-        variables: Mapping[str, Any] | None = None,
-        *,
-        environment: str | None = None,
-        include_drafts: bool = False,
-        exclude_invalid: bool | None = None,
-        timeout: "Optional[TimeoutTypes]" = None,
-    ) -> dict[str, Any] | None:
+        variables: "Mapping[str, Any] | None" = None,
+        **kwargs: "Unpack[ExecuteParams]",
+    ) -> "dict[str, Any] | None":
         response = self._client.request(
             "POST",
             self.graphql_url,
             headers=self._graphql_headers(
-                environment=environment,
-                include_drafts=include_drafts,
-                exclude_invalid=exclude_invalid,
+                environment=kwargs.get("environment"),
+                include_drafts=kwargs.get("include_drafts", False),
+                exclude_invalid=kwargs.get("exclude_invalid"),
             ),
             json=self._graphql_payload(query, variables),
-            timeout=timeout or USE_CLIENT_DEFAULT,
+            timeout=kwargs.get("timeout") or USE_CLIENT_DEFAULT,
         )
         return self._handle_graphql_response(response)
 
     def execute_from_file(
         self,
-        path: PathLike,
-        variables: dict[str, Any] | None = None,
-        *,
-        environment: str | None = None,
-        include_drafts: bool = False,
-        exclude_invalid: bool | None = None,
-        timeout: "Optional[TimeoutTypes]" = None,
-    ) -> dict[str, Any] | None:
+        path: "PathLike",
+        variables: "dict[str, Any] | None" = None,
+        **kwargs: "Unpack[ExecuteParams]",
+    ) -> "dict[str, Any] | None":
         with open(path, "r") as fp:
-            return self.execute(
-                fp.read(),
-                variables,
-                environment=environment,
-                include_drafts=include_drafts,
-                exclude_invalid=exclude_invalid,
-                timeout=timeout,
-            )
+            return self.execute(fp.read(), variables, **kwargs)
 
     def list_fields(self, id: str, *, timeout: "Optional[TimeoutTypes]" = None) -> list:
         response = self._client.request(
@@ -465,14 +471,11 @@ class Client(BaseClient):
         status, payload = data["status"], data.get("payload")
         return status, payload["data"] if payload else None
 
-    def poll_job(
-        self,
-        id: str,
-        max_retries: int = DEFAULT_MAX_RETRIES,
-        retry_delay: float = DEFAULT_RETRY_DELAY,
-        timeout: "Optional[TimeoutTypes]" = None,
-    ):
-        for _ in range(max_retries):
+    def poll_job(self, id: str, **kwargs: "Unpack[PollJobParams]"):
+        retry_delay = kwargs.get("retry_delay", DEFAULT_RETRY_DELAY)
+        timeout = kwargs.get("timeout")
+
+        for _ in range(kwargs.get("max_retries", DEFAULT_MAX_RETRIES)):
             try:
                 status, result = self.get_job_result(id, timeout=timeout)
                 if result is not None and status >= 200 and status < 300:
@@ -494,34 +497,24 @@ class Client(BaseClient):
 
     def list_records(
         self,
-        *,
-        nested: bool = False,
-        ids: Iterable[str] | None = None,
-        types: Iterable[str] | None = None,
-        query: str | None = None,
-        fields: Mapping[str, Mapping[str, str]] | None = None,
-        only_valid: bool = False,
-        locale: str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-        order_by: str | None = None,
-        version: "Optional[Version]" = None,
-        timeout: "Optional[TimeoutTypes]" = None,
-    ) -> tuple[list["Record"], int]:
+        **kwargs: "Unpack[ListRecordsWithPaginationParams]",
+    ) -> "tuple[list[Record], int]":
         params = self._records_params(
-            nested=nested,
-            locale=locale,
-            order_by=order_by,
-            version=version,
+            nested=kwargs.get("nested", False),
+            locale=kwargs.get("locale"),
+            order_by=kwargs.get("order_by"),
+            version=kwargs.get("version"),
         )
-        self._page_params(params, limit=limit, offset=offset)
+        self._page_params(
+            params, limit=kwargs.get("limit"), offset=kwargs.get("offset")
+        )
         self._filter_params(
             params,
-            ids=ids,
-            types=types,
-            query=query,
-            fields=fields,
-            only_valid=only_valid,
+            ids=kwargs.get("ids"),
+            types=kwargs.get("types"),
+            query=kwargs.get("query"),
+            fields=kwargs.get("fields"),
+            only_valid=kwargs.get("only_valid", False),
         )
 
         response = self._client.request(
@@ -529,40 +522,20 @@ class Client(BaseClient):
             "items",
             params=params,
             headers=self._api_headers,
-            timeout=timeout or USE_CLIENT_DEFAULT,
+            timeout=kwargs.get("timeout") or USE_CLIENT_DEFAULT,
         )
         return self._handle_list_response(response)
 
     def iter_records(
         self,
-        /,
         page_size: int | None = None,
-        *,
-        nested: bool = False,
-        ids: Iterable[str] | None = None,
-        types: Iterable[str] | None = None,
-        query: str | None = None,
-        fields: Mapping[str, Mapping[str, str]] | None = None,
-        only_valid: bool = False,
-        locale: str | None = None,
-        order_by: str | None = None,
-        version: "Optional[Version]" = None,
-        timeout: "Optional[TimeoutTypes]" = None,
-    ) -> Generator["Record", None, None]:
+        **kwargs: "Unpack[IterRecordsParams]",
+    ) -> "Generator[Record, None, None]":
         return self._iter_paginated(
             lambda offset, limit: self.list_records(
                 limit=limit,
                 offset=offset,
-                nested=nested,
-                ids=ids,
-                types=types,
-                query=query,
-                fields=fields,
-                only_valid=only_valid,
-                locale=locale,
-                order_by=order_by,
-                version=version,
-                timeout=timeout,
+                **kwargs,
             ),
             page_size,
         )
@@ -585,45 +558,34 @@ class Client(BaseClient):
     def create_upload_job(
         self,
         path: str,
-        copyright: str | None = None,
-        author: str | None = None,
-        notes: str | None = None,
-        metadata: "Optional[Localized[Metadata]]" = None,
-        tags: list[str] | None = None,
-        timeout: "Optional[TimeoutTypes]" = None,
+        **kwargs: "Unpack[CreateUploadJobParams]",
     ) -> "Job":
         attributes = self._upload_params(
             path=path,
-            copyright=copyright,
-            author=author,
-            notes=notes,
-            metadata=metadata,
-            tags=tags,
+            copyright=kwargs.get("copyright"),
+            author=kwargs.get("author"),
+            notes=kwargs.get("notes"),
+            metadata=kwargs.get("metadata"),
+            tags=kwargs.get("tags"),
         )
         response = self._client.post(
             "uploads",
             json=self._api_params("upload", **attributes),
             headers=self._upload_headers,
-            timeout=timeout or USE_CLIENT_DEFAULT,
+            timeout=kwargs.get("timeout") or USE_CLIENT_DEFAULT,
         )
         return self._handle_data_response(response)
 
     def create_upload(
         self,
         filename: str,
-        content: bytes | Iterable[bytes],
-        content_type: str | None = None,
-        copyright: str | None = None,
-        author: str | None = None,
-        notes: str | None = None,
-        metadata: "Optional[Localized[Metadata]]" = None,
-        tags: list[str] | None = None,
-        max_retries: int = DEFAULT_MAX_RETRIES,
-        retry_delay: float = DEFAULT_RETRY_DELAY,
+        content: "bytes | Iterable[bytes]",
+        **kwargs: "Unpack[CreateUploadWithRetryParams]",
     ):
         result = self.request_upload_permission(filename)
         url = result["attributes"]["url"]
         headers = result["attributes"]["request_headers"]
+        content_type = kwargs.get("content_type")
         if content_type is not None:
             headers["Content-Type"] = content_type
 
@@ -632,15 +594,17 @@ class Client(BaseClient):
         ).raise_for_status()
         job = self.create_upload_job(
             result["id"],
-            copyright=copyright,
-            author=author,
-            notes=notes,
-            metadata=metadata,
-            tags=tags,
+            **{  # type: ignore[misc]
+                k: v
+                for k, v in kwargs.items()
+                if k in ("copyright", "author", "notes", "metadata", "tags", "timeout")
+            },
         )
-        sync_sleep(retry_delay)
+        sync_sleep(kwargs.get("retry_delay", DEFAULT_RETRY_DELAY))
         return self.poll_job(
-            job["id"], max_retries=max_retries, retry_delay=retry_delay
+            job["id"],
+            max_retries=kwargs.get("max_retries", DEFAULT_MAX_RETRIES),
+            retry_delay=kwargs.get("retry_delay", DEFAULT_RETRY_DELAY),
         )
 
     def get_upload(self, id: str, timeout: "Optional[TimeoutTypes]" = None) -> "Upload":
@@ -703,21 +667,19 @@ class Client(BaseClient):
 
     def list_uploads(
         self,
-        ids: Iterable[str] | None = None,
-        query: str | None = None,
-        fields: Mapping[str, Mapping[str, str]] | None = None,
-        order_by: str | None = None,
-        locale: str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> tuple[list["Upload"], int]:
-        params = self._items_params(locale=locale, order_by=order_by)
-        self._page_params(params, limit=limit, offset=offset)
+        **kwargs: "Unpack[ListUploadsWithPaginationParams]",
+    ) -> "tuple[list[Upload], int]":
+        params = self._items_params(
+            locale=kwargs.get("locale"), order_by=kwargs.get("order_by")
+        )
+        self._page_params(
+            params, limit=kwargs.get("limit"), offset=kwargs.get("offset")
+        )
         self._filter_params(
             params,
-            ids=ids,
-            query=query,
-            fields=fields,
+            ids=kwargs.get("ids"),
+            query=kwargs.get("query"),
+            fields=kwargs.get("fields"),
         )
 
         response = self._client.request(
@@ -727,21 +689,16 @@ class Client(BaseClient):
 
     def iter_uploads(
         self,
-        page_size: int | None = None,
-        *,
-        ids: Iterable[str] | None = None,
-        query: str | None = None,
-        fields: Mapping[str, Mapping[str, str]] | None = None,
-        order_by: str | None = None,
-        locale: str | None = None,
-    ) -> Generator["Upload", None, None]:
+        page_size: "int | None" = None,
+        **kwargs: "Unpack[IterUploadsParams]",
+    ) -> "Generator[Upload, None, None]":
         return self._iter_paginated(
             lambda offset, limit: self.list_uploads(
-                order_by=order_by,
-                locale=locale,
-                ids=ids,
-                query=query,
-                fields=fields,
+                order_by=kwargs.get("order_by"),
+                locale=kwargs.get("locale"),
+                ids=kwargs.get("ids"),
+                query=kwargs.get("query"),
+                fields=kwargs.get("fields"),
                 limit=limit,
                 offset=offset,
             ),
@@ -773,16 +730,15 @@ class Client(BaseClient):
 
     def list_tags(
         self,
-        tag: "TagType" = "manual",
-        query: str | None = None,
-        offset: int | None = None,
-        limit: int | None = None,
-    ) -> tuple[list["UploadTag"], int]:
-        self._page_params(params := {}, offset=offset, limit=limit)
-        self._filter_params(params, query=query)
+        **kwargs: "Unpack[ListTagsWithPaginationParams]",
+    ) -> "tuple[list[UploadTag], int]":
+        self._page_params(
+            params := {}, offset=kwargs.get("offset"), limit=kwargs.get("limit")
+        )
+        self._filter_params(params, query=kwargs.get("query"))
         response = self._client.request(
             "GET",
-            self._tags_endpoint(tag),
+            self._tags_endpoint(kwargs.get("tag", "manual")),
             headers=self._api_headers,
             params=params,
         )
@@ -790,12 +746,13 @@ class Client(BaseClient):
 
     def iter_tags(
         self,
-        page_size: int | None = None,
-        *,
-        tag: "TagType" = "manual",
-    ) -> Generator["UploadTag", None, None]:
+        page_size: "int | None" = None,
+        **kwargs: "Unpack[IterTagsParams]",
+    ) -> "Generator[UploadTag, None, None]":
         return self._iter_paginated(
-            lambda offset, limit: self.list_tags(tag=tag, limit=limit, offset=offset),
+            lambda offset, limit: self.list_tags(
+                tag=kwargs.get("tag", "manual"), limit=limit, offset=offset
+            ),
             page_size,
         )
 
@@ -827,7 +784,6 @@ class AsyncClient(BaseClient):
     ) -> AsyncGenerator[T, None]:
         offset: int = 0
         total: int = 1
-
         while offset < total:
             items, total = await func(limit=size, offset=offset)
             offset += len(items)
@@ -838,23 +794,19 @@ class AsyncClient(BaseClient):
     async def execute(
         self,
         query: str,
-        variables: Mapping[str, Any] | None = None,
-        *,
-        environment: str | None = None,
-        include_drafts: bool = False,
-        exclude_invalid: bool | None = None,
-        timeout: "Optional[TimeoutTypes]" = None,
-    ) -> dict[str, Any] | None:
+        variables: "Mapping[str, Any] | None" = None,
+        **kwargs: "Unpack[ExecuteParams]",
+    ) -> "dict[str, Any] | None":
         response = await self._client.request(
             "POST",
             self.graphql_url,
             headers=self._graphql_headers(
-                environment=environment,
-                include_drafts=include_drafts,
-                exclude_invalid=exclude_invalid,
+                environment=kwargs.get("environment"),
+                include_drafts=kwargs.get("include_drafts", False),
+                exclude_invalid=kwargs.get("exclude_invalid"),
             ),
             json=self._graphql_payload(query, variables),
-            timeout=timeout or USE_CLIENT_DEFAULT,
+            timeout=kwargs.get("timeout") or USE_CLIENT_DEFAULT,
         )
         return self._handle_graphql_response(response)
 
@@ -905,10 +857,12 @@ class AsyncClient(BaseClient):
     async def poll_job(
         self,
         id: str,
-        max_retries: int = DEFAULT_MAX_RETRIES,
-        retry_delay: float = DEFAULT_RETRY_DELAY,
-        timeout: "Optional[TimeoutTypes]" = None,
+        **kwargs: "Unpack[PollJobParams]",
     ):
+        max_retries = kwargs.get("max_retries", DEFAULT_MAX_RETRIES)
+        retry_delay = kwargs.get("retry_delay", DEFAULT_RETRY_DELAY)
+        timeout = kwargs.get("timeout")
+
         for _ in range(max_retries):
             try:
                 status, result = await self.get_job_result(id, timeout=timeout)
@@ -933,34 +887,24 @@ class AsyncClient(BaseClient):
 
     async def list_records(
         self,
-        *,
-        nested: bool = False,
-        ids: Iterable[str] | None = None,
-        types: Iterable[str] | None = None,
-        query: str | None = None,
-        fields: Mapping[str, Mapping[str, str]] | None = None,
-        only_valid: bool = False,
-        locale: str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-        order_by: str | None = None,
-        version: "Optional[Version]" = None,
-        timeout: "Optional[TimeoutTypes]" = None,
-    ) -> tuple[list["Record"], int]:
+        **kwargs: "Unpack[ListRecordsWithPaginationParams]",
+    ) -> "tuple[list[Record], int]":
         params = self._records_params(
-            nested=nested,
-            locale=locale,
-            order_by=order_by,
-            version=version,
+            nested=kwargs.get("nested", False),
+            locale=kwargs.get("locale"),
+            order_by=kwargs.get("order_by"),
+            version=kwargs.get("version"),
         )
-        self._page_params(params, limit=limit, offset=offset)
+        self._page_params(
+            params, limit=kwargs.get("limit"), offset=kwargs.get("offset")
+        )
         self._filter_params(
             params,
-            ids=ids,
-            types=types,
-            query=query,
-            fields=fields,
-            only_valid=only_valid,
+            ids=kwargs.get("ids"),
+            types=kwargs.get("types"),
+            query=kwargs.get("query"),
+            fields=kwargs.get("fields"),
+            only_valid=kwargs.get("only_valid", False),
         )
 
         response = await self._client.request(
@@ -968,39 +912,18 @@ class AsyncClient(BaseClient):
             "items",
             params=params,
             headers=self._api_headers,
-            timeout=timeout or USE_CLIENT_DEFAULT,
+            timeout=kwargs.get("timeout") or USE_CLIENT_DEFAULT,
         )
         return self._handle_list_response(response)
 
     def iter_records(
         self,
         page_size: int | None = None,
-        *,
-        nested: bool = False,
-        ids: Iterable[str] | None = None,
-        types: Iterable[str] | None = None,
-        query: str | None = None,
-        fields: Mapping[str, Mapping[str, str]] | None = None,
-        only_valid: bool = False,
-        locale: str | None = None,
-        order_by: str | None = None,
-        version: "Optional[Version]" = None,
-        timeout: "Optional[TimeoutTypes]" = None,
+        **kwargs: "Unpack[IterRecordsParams]",
     ) -> AsyncGenerator["Record", None]:
         return self._iter_paginated(
             lambda offset, limit: self.list_records(
-                nested=nested,
-                ids=ids,
-                types=types,
-                query=query,
-                fields=fields,
-                only_valid=only_valid,
-                locale=locale,
-                order_by=order_by,
-                version=version,
-                timeout=timeout,
-                offset=offset,
-                limit=limit,
+                **kwargs, offset=offset, limit=limit
             ),
             page_size,
         )
@@ -1023,26 +946,21 @@ class AsyncClient(BaseClient):
     async def create_upload_job(
         self,
         path: str,
-        copyright: str | None = None,
-        author: str | None = None,
-        notes: str | None = None,
-        metadata: "Optional[Localized[Metadata]]" = None,
-        tags: list[str] | None = None,
-        timeout: "Optional[TimeoutTypes]" = None,
+        **kwargs: "Unpack[CreateUploadJobParams]",
     ) -> "Job":
         attributes = self._upload_params(
             path=path,
-            copyright=copyright,
-            author=author,
-            notes=notes,
-            metadata=metadata,
-            tags=tags,
+            copyright=kwargs.get("copyright"),
+            author=kwargs.get("author"),
+            notes=kwargs.get("notes"),
+            metadata=kwargs.get("metadata"),
+            tags=kwargs.get("tags"),
         )
         response = await self._client.post(
             "uploads",
             json=self._api_params("upload", **attributes),
             headers=self._upload_headers,
-            timeout=timeout or USE_CLIENT_DEFAULT,
+            timeout=kwargs.get("timeout") or USE_CLIENT_DEFAULT,
         )
         return self._handle_data_response(response)
 
@@ -1050,18 +968,14 @@ class AsyncClient(BaseClient):
         self,
         filename: str,
         content: bytes | Iterable[bytes] | AsyncIterable[bytes],
-        content_type: str | None = None,
-        copyright: str | None = None,
-        author: str | None = None,
-        notes: str | None = None,
-        metadata: "Optional[Localized[Metadata]]" = None,
-        tags: list[str] | None = None,
-        max_retries: int = DEFAULT_MAX_RETRIES,
-        retry_delay: float = DEFAULT_RETRY_DELAY,
+        **kwargs: "Unpack[CreateUploadWithRetryParams]",
     ):
-        result = await self.request_upload_permission(filename)
+        result = await self.request_upload_permission(
+            filename, timeout=kwargs.get("timeout")
+        )
         url = result["attributes"]["url"]
         headers = result["attributes"]["request_headers"]
+        content_type = kwargs.get("content_type")
         if content_type is not None:
             headers["Content-Type"] = content_type
 
@@ -1071,15 +985,17 @@ class AsyncClient(BaseClient):
         response.raise_for_status()
         job = await self.create_upload_job(
             result["id"],
-            copyright=copyright,
-            author=author,
-            notes=notes,
-            metadata=metadata,
-            tags=tags,
+            **{  # type: ignore[misc]
+                k: v
+                for k, v in kwargs.items()
+                if k in ("copyright", "author", "notes", "metadata", "tags", "timeout")
+            },
         )
-        await async_sleep(retry_delay)
+        await async_sleep(retry_delay := kwargs.get("retry_delay", DEFAULT_RETRY_DELAY))
         return await self.poll_job(
-            job["id"], max_retries=max_retries, retry_delay=retry_delay
+            job["id"],
+            max_retries=kwargs.get("max_retries", DEFAULT_MAX_RETRIES),
+            retry_delay=retry_delay,
         )
 
     async def get_upload(
@@ -1105,22 +1021,19 @@ class AsyncClient(BaseClient):
         return self._handle_data_response(response)
 
     async def list_uploads(
-        self,
-        ids: Iterable[str] | None = None,
-        query: str | None = None,
-        fields: Mapping[str, Mapping[str, str]] | None = None,
-        order_by: str | None = None,
-        locale: str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> tuple[list["Upload"], int]:
-        params = self._items_params(locale=locale, order_by=order_by)
-        self._page_params(params, limit=limit, offset=offset)
+        self, **kwargs: "Unpack[ListUploadsWithPaginationParams]"
+    ) -> "tuple[list[Upload], int]":
+        params = self._items_params(
+            locale=kwargs.get("locale"), order_by=kwargs.get("order_by")
+        )
+        self._page_params(
+            params, limit=kwargs.get("limit"), offset=kwargs.get("offset")
+        )
         self._filter_params(
             params,
-            ids=ids,
-            query=query,
-            fields=fields,
+            ids=kwargs.get("ids"),
+            query=kwargs.get("query"),
+            fields=kwargs.get("fields"),
         )
 
         response = await self._client.request(
@@ -1130,23 +1043,12 @@ class AsyncClient(BaseClient):
 
     def iter_uploads(
         self,
-        page_size: int | None = None,
-        *,
-        ids: Iterable[str] | None = None,
-        query: str | None = None,
-        fields: Mapping[str, Mapping[str, str]] | None = None,
-        order_by: str | None = None,
-        locale: str | None = None,
-    ) -> AsyncGenerator["Upload", None]:
+        page_size: "int | None" = None,
+        **kwargs: "Unpack[IterUploadsParams]",
+    ) -> "AsyncGenerator[Upload, None]":
         return self._iter_paginated(
             lambda offset, limit: self.list_uploads(
-                order_by=order_by,
-                locale=locale,
-                ids=ids,
-                query=query,
-                fields=fields,
-                limit=limit,
-                offset=offset,
+                **kwargs, limit=limit, offset=offset
             ),
             page_size,
         )
@@ -1176,16 +1078,15 @@ class AsyncClient(BaseClient):
 
     async def list_tags(
         self,
-        tag: "TagType" = "manual",
-        query: str | None = None,
-        offset: int | None = None,
-        limit: int | None = None,
-    ) -> tuple[list["UploadTag"], int]:
-        self._page_params(params := {}, offset=offset, limit=limit)
-        self._filter_params(params, query=query)
+        **kwargs: "Unpack[ListTagsWithPaginationParams]",
+    ) -> "tuple[list[UploadTag], int]":
+        self._page_params(
+            params := {}, offset=kwargs.get("offset"), limit=kwargs.get("limit")
+        )
+        self._filter_params(params, query=kwargs.get("query"))
         response = await self._client.request(
             "GET",
-            self._tags_endpoint(tag),
+            self._tags_endpoint(kwargs.get("tag", "manual")),
             headers=self._api_headers,
             params=params,
         )
@@ -1194,10 +1095,9 @@ class AsyncClient(BaseClient):
     def iter_tags(
         self,
         page_size: int | None = None,
-        *,
-        tag: "TagType" = "manual",
-    ) -> AsyncGenerator["UploadTag", None]:
+        **kwargs: "Unpack[IterTagsParams]",
+    ) -> "AsyncGenerator[UploadTag, None]":
         return self._iter_paginated(
-            lambda offset, limit: self.list_tags(offset=offset, limit=limit, tag=tag),
+            lambda offset, limit: self.list_tags(**kwargs, offset=offset, limit=limit),
             page_size,
         )
