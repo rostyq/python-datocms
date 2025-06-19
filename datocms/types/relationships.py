@@ -5,14 +5,15 @@ __all__ = [
     "Id",
     "Item",
     "ItemId",
+    "ItemType",
     "ItemTypeId",
     "FieldId",
     "FieldSetId",
     "WorkflowId",
+    "Creator",
     "CreatorId",
     "CreatorRelationships",
     "ItemTypeRelationships",
-    "Relationships",
 ]
 
 

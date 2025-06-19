@@ -1,6 +1,5 @@
 from typing import (
     TYPE_CHECKING,
-    Literal,
     Iterable,
     AsyncIterable,
     Protocol,
@@ -44,19 +43,19 @@ if TYPE_CHECKING:
 __all__ = ["Client", "AsyncClient"]
 
 
-T = TypeVar("T")
-
 DEFAULT_RETRY_DELAY = 1.0
 DEFAULT_MAX_RETRIES = 10
 
+T = TypeVar("T")
+
 
 class GetPage(Protocol, Generic[T]):
-    def __call__(self, limit: int, offset: int, **kwargs) -> tuple[list[T], int]: ...
+    def __call__(self, offset: int, *, limit: int | None) -> tuple[list[T], int]: ...
 
 
 class GetPageAsync(Protocol, Generic[T]):
     async def __call__(
-        self, limit: int, offset: int, **kwargs
+        self, offset: int, *, limit: int | None
     ) -> tuple[list[T], int]: ...
 
 
@@ -112,7 +111,6 @@ class DatoGraphqlError(DatoError):
         else:
             return ", ".join(f"{loc['line']}:{loc['column']}" for loc in self.locations)
 
-
     def _fmt_path(self) -> str:
         return ".".join(self.path) if self.path else ""
 
@@ -132,7 +130,11 @@ class DatoApiError(DatoError):
     code: "ErrorCodeType"
 
     def __init__(
-        self, code: str, doc_url: str, details: dict[str, Any], transient: bool
+        self,
+        code: "ErrorCodeType",
+        doc_url: str,
+        details: dict[str, Any],
+        transient: bool,
     ):
         super().__init__()
         self.code = code
@@ -174,7 +176,7 @@ class BaseClient:
         )
 
         if response.is_success:
-            return result
+            return cast(dict[str, Any], result)
         elif result is not None and isinstance(data := result["data"], list):
             data: list["Error"]
             errors = [DatoApiError.from_dict(item["attributes"]) for item in data]
@@ -184,6 +186,7 @@ class BaseClient:
                 raise ExceptionGroup(",".join(error.code for error in errors), errors)
         else:
             response.raise_for_status()
+            raise
 
     @staticmethod
     def _handle_graphql_response(response: "Response") -> dict[str, Any] | None:
@@ -191,19 +194,24 @@ class BaseClient:
         if (errors := result.get("errors")) is None:
             return result.get("data")
         else:
-            errors = [DatoGraphqlError.from_dict(error) for error in errors]
+            errors = [
+                DatoGraphqlError.from_dict(cast("GraphqlError", error))
+                for error in errors
+            ]
             if len(errors) == 1:
                 raise errors[0]
             else:
                 raise ExceptionGroup("GraphQL errors", errors)
 
     @classmethod
-    def _handle_data_response(cls, response: "Response") -> dict[str, Any]:
+    def _handle_data_response(cls, response: "Response") -> Any:
         return cls._handle_response(response)["data"]
 
     @classmethod
-    def _handle_list_response(cls, response: "Response") -> tuple[list[T], int]:
-        return cls._list_result_to_tuple(cls._handle_response(response))
+    def _handle_list_response(cls, response: "Response") -> tuple[list[Any], int]:
+        return cls._list_result_to_tuple(
+            cast("ArrayResult", cls._handle_response(response))
+        )
 
     @staticmethod
     def _page_params(
@@ -286,7 +294,7 @@ class BaseClient:
         nested: bool = False,
         locale: str | None = None,
         order_by: str | None = None,
-        version: "Optional[Version]" = None,
+        version: "Optional[AnyVersion]" = None,
     ):
         p = cls._items_params(locale=locale, order_by=order_by)
         if nested:
@@ -327,11 +335,11 @@ class BaseClient:
         return {"data": {"type": name, "attributes": attributes}}
 
     @staticmethod
-    def _api_update(id: str, name: str, **kwargs) -> "Payload":
+    def _api_update(id: str, name: str, **kwargs):
         return {"data": {"id": id, "type": name, **kwargs}}
 
     @staticmethod
-    def _list_result_to_tuple(result: "ArrayResult") -> tuple[list[T], int]:
+    def _list_result_to_tuple(result: "ArrayResult") -> tuple[list[Any], int]:
         return result["data"], result["meta"]["total_count"]
 
     @staticmethod
@@ -340,7 +348,7 @@ class BaseClient:
     ) -> "PayloadGraphQL":
         payload: "PayloadGraphQL" = {"query": query}
         if variables is not None and len(variables) != 0:
-            payload["variables"] = variables
+            payload["variables"] = dict(variables)
         return payload
 
     @staticmethod
@@ -382,17 +390,15 @@ class Client(BaseClient):
 
     @staticmethod
     def _iter_paginated(
-        func: GetPage[T], page_size: int = 30, /, **kwargs
+        func: GetPage[T], size: int | None = None, /
     ) -> Generator[T, None, None]:
         offset: int = 0
         total: int = 1
 
         while offset < total:
-            items, total = func(limit=page_size, offset=offset, **kwargs)
+            items, total = func(offset, limit=size)
             offset += len(items)
-
-            for item in items:
-                yield item
+            yield from items
 
     def execute(
         self,
@@ -403,7 +409,7 @@ class Client(BaseClient):
         include_drafts: bool = False,
         exclude_invalid: bool | None = None,
         timeout: "Optional[TimeoutTypes]" = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         response = self._client.request(
             "POST",
             self.graphql_url,
@@ -426,7 +432,7 @@ class Client(BaseClient):
         include_drafts: bool = False,
         exclude_invalid: bool | None = None,
         timeout: "Optional[TimeoutTypes]" = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         with open(path, "r") as fp:
             return self.execute(
                 fp.read(),
@@ -448,7 +454,7 @@ class Client(BaseClient):
 
     def get_job_result(
         self, id: str, *, timeout: "Optional[TimeoutTypes]" = None
-    ) -> tuple[int, "Model"]:
+    ) -> tuple[int, Optional["Model"]]:
         response = self._client.request(
             "GET",
             f"job-results/{id}",
@@ -456,7 +462,7 @@ class Client(BaseClient):
             timeout=timeout or USE_CLIENT_DEFAULT,
         )
         data = cast("JobResult", self._handle_data_response(response))["attributes"]
-        status, payload = data["status"], data["payload"]
+        status, payload = data["status"], data.get("payload")
         return status, payload["data"] if payload else None
 
     def poll_job(
@@ -529,7 +535,8 @@ class Client(BaseClient):
 
     def iter_records(
         self,
-        page_size: int = 30,
+        /,
+        page_size: int | None = None,
         *,
         nested: bool = False,
         ids: Iterable[str] | None = None,
@@ -543,18 +550,21 @@ class Client(BaseClient):
         timeout: "Optional[TimeoutTypes]" = None,
     ) -> Generator["Record", None, None]:
         return self._iter_paginated(
-            self.list_records,
+            lambda offset, limit: self.list_records(
+                limit=limit,
+                offset=offset,
+                nested=nested,
+                ids=ids,
+                types=types,
+                query=query,
+                fields=fields,
+                only_valid=only_valid,
+                locale=locale,
+                order_by=order_by,
+                version=version,
+                timeout=timeout,
+            ),
             page_size,
-            nested=nested,
-            ids=ids,
-            types=types,
-            query=query,
-            fields=fields,
-            only_valid=only_valid,
-            locale=locale,
-            order_by=order_by,
-            version=version,
-            timeout=timeout,
         )
 
     def request_upload_permission(
@@ -617,10 +627,9 @@ class Client(BaseClient):
         if content_type is not None:
             headers["Content-Type"] = content_type
 
-        response = self._client.request(
+        self._client.request(
             "PUT", url, headers=headers, content=content, auth=None
-        )
-        response.raise_for_status()
+        ).raise_for_status()
         job = self.create_upload_job(
             result["id"],
             copyright=copyright,
@@ -675,7 +684,7 @@ class Client(BaseClient):
         response = self._client.request(
             "PUT",
             f"uploads/{id}",
-            headers=self._upload_headers(),
+            headers=self._upload_headers,
             json=self._api_update(id, "upload", **params),
             timeout=timeout or USE_CLIENT_DEFAULT,
         )
@@ -718,7 +727,7 @@ class Client(BaseClient):
 
     def iter_uploads(
         self,
-        page_size: int = 30,
+        page_size: int | None = None,
         *,
         ids: Iterable[str] | None = None,
         query: str | None = None,
@@ -727,13 +736,16 @@ class Client(BaseClient):
         locale: str | None = None,
     ) -> Generator["Upload", None, None]:
         return self._iter_paginated(
-            self.list_uploads,
-            page=page_size,
-            order_by=order_by,
-            locale=locale,
-            ids=ids,
-            query=query,
-            fields=fields,
+            lambda offset, limit: self.list_uploads(
+                order_by=order_by,
+                locale=locale,
+                ids=ids,
+                query=query,
+                fields=fields,
+                limit=limit,
+                offset=offset,
+            ),
+            page_size,
         )
 
     def get_referenced_records_by_upload(
@@ -778,11 +790,14 @@ class Client(BaseClient):
 
     def iter_tags(
         self,
-        page_size: int = 30,
+        page_size: int | None = None,
         *,
         tag: "TagType" = "manual",
     ) -> Generator["UploadTag", None, None]:
-        return self._iter_paginated(self.list_tags, page_size, tag=tag)
+        return self._iter_paginated(
+            lambda offset, limit: self.list_tags(tag=tag, limit=limit, offset=offset),
+            page_size,
+        )
 
 
 class AsyncClient(BaseClient):
@@ -808,13 +823,13 @@ class AsyncClient(BaseClient):
 
     @staticmethod
     async def _iter_paginated(
-        func: GetPageAsync[T], page_size: int = 30, /, **kwargs
+        func: GetPageAsync[T], size: int | None = None, /
     ) -> AsyncGenerator[T, None]:
         offset: int = 0
         total: int = 1
 
         while offset < total:
-            items, total = await func(limit=page_size, offset=offset, **kwargs)
+            items, total = await func(limit=size, offset=offset)
             offset += len(items)
 
             for item in items:
@@ -876,7 +891,7 @@ class AsyncClient(BaseClient):
 
     async def get_job_result(
         self, id: str, *, timeout: "Optional[TimeoutTypes]" = None
-    ) -> tuple[int, "Model"]:
+    ) -> tuple[int, Optional["Model"]]:
         response = await self._client.request(
             "GET",
             f"job-results/{id}",
@@ -884,7 +899,7 @@ class AsyncClient(BaseClient):
             timeout=timeout or USE_CLIENT_DEFAULT,
         )
         data = cast("JobResult", self._handle_data_response(response))["attributes"]
-        status, payload = data["status"], data["payload"]
+        status, payload = data["status"], data.get("payload")
         return status, payload["data"] if payload else None
 
     async def poll_job(
@@ -959,7 +974,7 @@ class AsyncClient(BaseClient):
 
     def iter_records(
         self,
-        page_size: int = 30,
+        page_size: int | None = None,
         *,
         nested: bool = False,
         ids: Iterable[str] | None = None,
@@ -973,18 +988,21 @@ class AsyncClient(BaseClient):
         timeout: "Optional[TimeoutTypes]" = None,
     ) -> AsyncGenerator["Record", None]:
         return self._iter_paginated(
-            self.list_records,
+            lambda offset, limit: self.list_records(
+                nested=nested,
+                ids=ids,
+                types=types,
+                query=query,
+                fields=fields,
+                only_valid=only_valid,
+                locale=locale,
+                order_by=order_by,
+                version=version,
+                timeout=timeout,
+                offset=offset,
+                limit=limit,
+            ),
             page_size,
-            nested=nested,
-            ids=ids,
-            types=types,
-            query=query,
-            fields=fields,
-            only_valid=only_valid,
-            locale=locale,
-            order_by=order_by,
-            version=version,
-            timeout=timeout,
         )
 
     async def request_upload_permission(
@@ -1112,7 +1130,7 @@ class AsyncClient(BaseClient):
 
     def iter_uploads(
         self,
-        page_size: int = 30,
+        page_size: int | None = None,
         *,
         ids: Iterable[str] | None = None,
         query: str | None = None,
@@ -1121,13 +1139,16 @@ class AsyncClient(BaseClient):
         locale: str | None = None,
     ) -> AsyncGenerator["Upload", None]:
         return self._iter_paginated(
-            self.list_uploads,
+            lambda offset, limit: self.list_uploads(
+                order_by=order_by,
+                locale=locale,
+                ids=ids,
+                query=query,
+                fields=fields,
+                limit=limit,
+                offset=offset,
+            ),
             page_size,
-            order_by=order_by,
-            locale=locale,
-            ids=ids,
-            query=query,
-            fields=fields,
         )
 
     async def get_referenced_records_by_upload(
@@ -1172,8 +1193,11 @@ class AsyncClient(BaseClient):
 
     def iter_tags(
         self,
-        page_size: int = 30,
+        page_size: int | None = None,
         *,
         tag: "TagType" = "manual",
     ) -> AsyncGenerator["UploadTag", None]:
-        return self._iter_paginated(self.list_tags, page_size, tag=tag)
+        return self._iter_paginated(
+            lambda offset, limit: self.list_tags(offset=offset, limit=limit, tag=tag),
+            page_size,
+        )

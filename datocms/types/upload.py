@@ -13,6 +13,7 @@ __all__ = [
     "UploadId",
     "UploadTypeName",
     "UploadTagId",
+    "UploadAttributes",
     "UploadTag",
     "UploadPermission",
     "UploadPermissionAttributes",
@@ -43,7 +44,7 @@ class Metadata(TypedDict):
     focal_point: FocalPoint | None
 
 
-class Attributes(TypedDict):
+class UploadAttributes(TypedDict):
     size: int
     width: None | int
     height: None | int
@@ -78,7 +79,7 @@ UploadTypeName = Literal["upload"]
 class Upload(TypedDict):
     id: UploadId
     type: UploadTypeName
-    attributes: Attributes
+    attributes: UploadAttributes
     relationships: CreatorRelationships
 
 

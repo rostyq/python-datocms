@@ -1,16 +1,17 @@
-from typing import TYPE_CHECKING
 from base64 import urlsafe_b64decode
 from uuid import UUID
 
-if TYPE_CHECKING:
-    from .types.relationships import ItemId
+
+__all__ = [
+    "validate_item_id",
+]
 
 
-def unpadded_urlsafe_b64decode(s: str) -> bytes:
+def unpadded_urlsafe_b64decode(s: str, /) -> bytes:
     return urlsafe_b64decode(s.ljust((ls := len(s)) + (-ls % 4), "="))
 
 
-def validate_item_id(s: str, /) -> "ItemId":
+def validate_item_id(s: str, /) -> str:
     if s.isdigit():
         if int(s) > 281474976710655:
             raise ValueError("Integer ID exceeds the maximum allowed value")

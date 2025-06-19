@@ -1,4 +1,7 @@
-from typing import TypeVar, Generic, TypedDict, Literal
+from typing import TypeVar, Generic, TypedDict
+
+
+__all__ = ["DataField"]
 
 
 T = TypeVar("T")

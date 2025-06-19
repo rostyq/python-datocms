@@ -1,8 +1,8 @@
-from typing import Literal, TypedDict, NewType
+from typing import Literal, TypedDict, NewType, Any
 
 from .relationships import CreatorRelationships, ItemTypeRelationships
 
-__all__ = ["Attributes", "Meta", "Record", "RecordId"]
+__all__ = ["Attributes", "Meta", "Record", "RecordId", "Relationships", "RecordTypeName"]
 
 RecordId = NewType("RecordId", str)
 

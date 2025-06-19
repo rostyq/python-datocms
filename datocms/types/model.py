@@ -8,14 +8,12 @@ __all__ = [
     "ModelId",
     "Model",
     "Attributes",
-    "Id",
     "FieldId",
     "FieldSetId",
     "WorkflowId",
     "ItemId",
-    "Fields",
-    "FieldSets",
     "Relationships",
+    "ModelTypeName",
 ]
 
 ModelId = NewType("ModelId", str)

@@ -4,7 +4,7 @@ from . import DataField
 from .relationships import FieldSetId
 
 
-__all__ = ["Field"]
+__all__ = ["Field", "Attributes", "Relationships"]
 
 
 class Attributes(TypedDict):

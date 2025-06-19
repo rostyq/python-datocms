@@ -16,12 +16,6 @@ __all__ = [
     "Result",
     "ArrayResult",
     "Meta",
-    "PageParams",
-    "FilterParams",
-    "GraphqlParams",
-    "PageParams",
-    "FilterParams",
-    "RecordsParams",
     "GraphqlResult",
     "GraphqlError",
     "ErrorLocation",
@@ -41,7 +35,7 @@ class RelationshipsUpdate(TypedDict, total=False):
 
 class PayloadData(TypedDict):
     type: str
-    attributes: dict[str]
+    attributes: dict[str, Any]
 
 
 class PayloadUpdate(TypedDict):
