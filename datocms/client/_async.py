@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from ..types.record import Record
     from ..types.model import Model
     from ..types.job import JobResult
-    from ..types.upload import Upload, UploadPermission, UploadTag
+    from ..types.upload import Upload, UploadPermission, UploadTag, UploadCollection
     from ..types.job import Job
     from .base import GetPageAsync
 
@@ -186,9 +186,17 @@ class AsyncClient(BaseClient):
             metadata=kwargs.get("metadata"),
             tags=kwargs.get("tags"),
         )
+        relationships = self._upload_relationships(
+            collection_id=kwargs.get("collection_id"),
+        )
+
+        payload = self._api_params("upload", **attributes)
+        if relationships:
+            payload["data"]["relationships"] = relationships
+
         response = await self._client.post(
             "uploads",
-            json=self._api_params("upload", **attributes),
+            json=payload,
             headers=self._upload_headers,
             timeout=kwargs.get("timeout") or USE_CLIENT_DEFAULT,
         )
@@ -213,7 +221,16 @@ class AsyncClient(BaseClient):
             **{  # type: ignore[misc]
                 k: v
                 for k, v in kwargs.items()
-                if k in ("copyright", "author", "notes", "metadata", "tags", "timeout")
+                if k
+                in (
+                    "copyright",
+                    "author",
+                    "notes",
+                    "metadata",
+                    "tags",
+                    "collection_id",
+                    "timeout",
+                )
             },
         )
         await sleep(retry_delay := kwargs.get("retry_delay", DEFAULT_RETRY_DELAY))
@@ -246,8 +263,12 @@ class AsyncClient(BaseClient):
         if attributes:
             params["attributes"] = attributes
 
-        if (creator := kwargs.get("creator")) is not None:
-            params["relationships"] = {"creator": {"data": creator}}
+        relationships = self._upload_relationships(
+            collection_id=kwargs.get("collection_id"),
+            creator=kwargs.get("creator"),
+        )
+        if relationships:
+            params["relationships"] = relationships
 
         response = await self._client.request(
             "PUT",
@@ -332,3 +353,22 @@ class AsyncClient(BaseClient):
             lambda offset, limit: self.list_tags(**kwargs, offset=offset, limit=limit),
             page_size,
         )
+
+    async def list_upload_collections(self, **kwargs) -> "list[UploadCollection]":
+        params = {}
+        self._page_params(
+            params, limit=kwargs.get("limit"), offset=kwargs.get("offset")
+        )
+        self._filter_params(
+            params,
+            ids=kwargs.get("ids"),
+        )
+
+        response = await self._client.request(
+            "GET",
+            "upload-collections",
+            params=params,
+            headers=self._api_headers,
+            timeout=kwargs.get("timeout") or USE_CLIENT_DEFAULT,
+        )
+        return self._handle_data_response(response)

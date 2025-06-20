@@ -14,6 +14,8 @@ __all__ = [
     "CreatorId",
     "CreatorRelationships",
     "ItemTypeRelationships",
+    "UploadCollectionId",
+    "UploadCollectionRelationship",
 ]
 
 
@@ -45,12 +47,20 @@ class CreatorId(Id):
     type: Literal["account", "access_token", "user", "sso_user"]
 
 
+class UploadCollectionId(Id):
+    type: Literal["upload_collection"]
+
+
 class ItemType(TypedDict):
     data: ItemTypeId
 
 
 class Creator(TypedDict):
     data: CreatorId
+
+
+class UploadCollectionRelationship(TypedDict):
+    data: UploadCollectionId
 
 
 class CreatorRelationships(TypedDict):
@@ -66,3 +76,9 @@ class Item(TypedDict):
     type: Literal["item"]
     attributes: dict[str, Any]
     relationships: ItemTypeRelationships
+
+
+class UploadCollection(TypedDict):
+    id: str
+    type: Literal["upload_collection"]
+    attributes: dict[str, Any]

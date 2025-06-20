@@ -39,6 +39,8 @@ if TYPE_CHECKING:
         ListRecordsWithPaginationParams,
         ListUploadsWithPaginationParams,
         ListTagsWithPaginationParams,
+        ListTagsWithPaginationParams,
+        ListUploadCollectionsParams,
         CreateUploadWithRetryParams,
         GetReferencedRecordsByUploadParams,
         CreateTagParams,
@@ -47,7 +49,14 @@ if TYPE_CHECKING:
     from ..types.errors import Error
     from ..types.record import Record
     from ..types.model import Model
-    from ..types.upload import Metadata, Upload, Localized, UploadPermission, UploadTag
+    from ..types.upload import (
+        Metadata,
+        Upload,
+        Localized,
+        UploadPermission,
+        UploadTag,
+        UploadCollection,
+    )
     from ..types.job import Job
 
     class GetPage[T](Protocol):
@@ -254,6 +263,20 @@ class BaseClient:
         return p
 
     @staticmethod
+    def _upload_relationships(
+        collection_id: str | None = None,
+        creator: Any | None = None,
+    ):
+        relationships = {}
+        if collection_id is not None:
+            relationships["upload_collection"] = {
+                "data": {"id": collection_id, "type": "upload_collection"}
+            }
+        if creator is not None:
+            relationships["creator"] = {"data": creator}
+        return relationships
+
+    @staticmethod
     def _api_params(name: str, /, **attributes) -> "Payload":
         return {"data": {"type": name, "attributes": attributes}}
 
@@ -391,3 +414,9 @@ class BaseClient:
         id: str,
         **kwargs: "Unpack[UpdateUploadParams]",
     ) -> "Returnable[Job]": ...
+
+    @abstractmethod
+    def list_upload_collections(
+        self,
+        **kwargs: "Unpack[ListUploadCollectionsParams]",
+    ) -> "Returnable[list[UploadCollection]]": ...

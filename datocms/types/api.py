@@ -25,7 +25,6 @@ __all__ = [
     "ErrorLocation",
     "ErrorExtensions",
     "ErrorProblem",
-    # Parameter TypedDicts
     "PaginationParams",
     "RetryParams",
     "ExecuteParams",
@@ -38,14 +37,14 @@ __all__ = [
     "CreateUploadParams",
     "CreateUploadJobParams",
     "PollJobParams",
-    "ListTagsParams",    "IterTagsParams",
+    "ListTagsParams",
+    "IterTagsParams",
+    "ListUploadCollectionsParams",
     "GetReferencedRecordsByUploadParams",
     "CreateTagParams",
-    # Union types with pagination
     "ListRecordsWithPaginationParams",
     "ListUploadsWithPaginationParams",
     "ListTagsWithPaginationParams",
-    # Union types with retry parameters
     "CreateUploadWithRetryParams",
 ]
 
@@ -62,6 +61,7 @@ class RelationshipsUpdate(TypedDict, total=False):
 class PayloadData(TypedDict):
     type: str
     attributes: dict[str, Any]
+    relationships: NotRequired[dict[str, Any]]
 
 
 class PayloadUpdate(TypedDict):
@@ -191,6 +191,7 @@ class UploadMetadataParams(TypedDict, total=False):
     notes: str | None
     metadata: Localized[Metadata]
     tags: list[str] | None
+    collection_id: str | None
 
 
 class UpdateUploadParams(UploadMetadataParams, total=False):
@@ -204,6 +205,7 @@ class CreateUploadJobParams(TypedDict, total=False):
     notes: str | None
     metadata: Localized[Metadata]
     tags: list[str] | None
+    collection_id: str | None
     timeout: TimeoutTypes | None
 
 
@@ -243,6 +245,11 @@ class ListUploadsWithPaginationParams(ListUploadsParams, PaginationParams, total
 
 class ListTagsWithPaginationParams(ListTagsParams, PaginationParams, total=False):
     pass
+
+
+class ListUploadCollectionsParams(TypedDict, total=False):
+    ids: Iterable[str] | None
+    timeout: TimeoutTypes | None
 
 
 class CreateUploadWithRetryParams(CreateUploadParams, RetryParams, total=False):

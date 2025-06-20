@@ -4,7 +4,6 @@ from typing import (
     Generator,
     Any,
     Optional,
-    Unpack,
     cast,
 )
 from types import TracebackType
@@ -15,21 +14,10 @@ from httpx import Client as _Client, USE_CLIENT_DEFAULT
 from .base import BaseClient, DatoApiError, DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY
 
 if TYPE_CHECKING:
-    from ..types.api import (
-        IterRecordsParams,
-        IterUploadsParams,
-        CreateUploadJobParams,
-        IterTagsParams,
-        ListRecordsWithPaginationParams,
-        ListUploadsWithPaginationParams,
-        ListTagsWithPaginationParams,
-        GetReferencedRecordsByUploadParams,
-        UpdateUploadParams,
-    )
     from ..types.record import Record
     from ..types.model import Model
     from ..types.job import JobResult
-    from ..types.upload import Upload, UploadPermission, UploadTag
+    from ..types.upload import Upload, UploadPermission, UploadTag, UploadCollection
     from ..types.job import Job
 
     from .base import GetPage
@@ -133,10 +121,7 @@ class Client(BaseClient):
         )
         return self._handle_data_response(response)
 
-    def list_records(
-        self,
-        **kwargs: "Unpack[ListRecordsWithPaginationParams]",
-    ) -> "tuple[list[Record], int]":
+    def list_records(self, **kwargs) -> "tuple[list[Record], int]":
         params = self._records_params(
             nested=kwargs.get("nested", False),
             locale=kwargs.get("locale"),
@@ -165,9 +150,7 @@ class Client(BaseClient):
         return self._handle_list_response(response)
 
     def iter_records(
-        self,
-        page_size: int | None = None,
-        **kwargs: "Unpack[IterRecordsParams]",
+        self, page_size: int | None = None, **kwargs
     ) -> "Generator[Record, None, None]":
         return self._iter_paginated(
             lambda offset, limit: self.list_records(
@@ -193,11 +176,7 @@ class Client(BaseClient):
         assert result.get("type") == "upload_request"
         return result
 
-    def create_upload_job(
-        self,
-        path: str,
-        **kwargs: "Unpack[CreateUploadJobParams]",
-    ) -> "Job":
+    def create_upload_job(self, path: str, **kwargs) -> "Job":
         attributes = self._upload_params(
             path=path,
             copyright=kwargs.get("copyright"),
@@ -206,9 +185,17 @@ class Client(BaseClient):
             metadata=kwargs.get("metadata"),
             tags=kwargs.get("tags"),
         )
+        relationships = self._upload_relationships(
+            collection_id=kwargs.get("collection_id"),
+        )
+
+        payload = self._api_params("upload", **attributes)
+        if relationships:
+            payload["data"]["relationships"] = relationships
+
         response = self._client.post(
             "uploads",
-            json=self._api_params("upload", **attributes),
+            json=payload,
             headers=self._upload_headers,
             timeout=kwargs.get("timeout") or USE_CLIENT_DEFAULT,
         )
@@ -230,7 +217,16 @@ class Client(BaseClient):
             **{  # type: ignore[misc]
                 k: v
                 for k, v in kwargs.items()
-                if k in ("copyright", "author", "notes", "metadata", "tags", "timeout")
+                if k
+                in (
+                    "copyright",
+                    "author",
+                    "notes",
+                    "metadata",
+                    "tags",
+                    "collection_id",
+                    "timeout",
+                )
             },
         )
         sleep(kwargs.get("retry_delay", DEFAULT_RETRY_DELAY))
@@ -249,11 +245,7 @@ class Client(BaseClient):
         )
         return self._handle_data_response(response)
 
-    def update_upload(
-        self,
-        id: str,
-        **kwargs: "Unpack[UpdateUploadParams]",
-    ) -> "Job":
+    def update_upload(self, id: str, **kwargs) -> "Job":
         params = {}
         attributes = self._upload_params(
             path=kwargs.get("path"),
@@ -267,8 +259,12 @@ class Client(BaseClient):
         if attributes:
             params["attributes"] = attributes
 
-        if (creator := kwargs.get("creator")) is not None:
-            params["relationships"] = {"creator": {"data": creator}}
+        relationships = self._upload_relationships(
+            collection_id=kwargs.get("collection_id"),
+            creator=kwargs.get("creator"),
+        )
+        if relationships:
+            params["relationships"] = relationships
 
         response = self._client.request(
             "PUT",
@@ -288,10 +284,7 @@ class Client(BaseClient):
         )
         return self._handle_data_response(response)
 
-    def list_uploads(
-        self,
-        **kwargs: "Unpack[ListUploadsWithPaginationParams]",
-    ) -> "tuple[list[Upload], int]":
+    def list_uploads(self, **kwargs) -> "tuple[list[Upload], int]":
         params = self._items_params(
             locale=kwargs.get("locale"), order_by=kwargs.get("order_by")
         )
@@ -311,9 +304,7 @@ class Client(BaseClient):
         return self._handle_list_response(response)
 
     def iter_uploads(
-        self,
-        page_size: "int | None" = None,
-        **kwargs: "Unpack[IterUploadsParams]",
+        self, page_size: "int | None" = None, **kwargs
     ) -> "Generator[Upload, None, None]":
         return self._iter_paginated(
             lambda offset, limit: self.list_uploads(
@@ -328,11 +319,7 @@ class Client(BaseClient):
             page_size,
         )
 
-    def get_referenced_records_by_upload(
-        self,
-        id: str,
-        **kwargs: "Unpack[GetReferencedRecordsByUploadParams]",
-    ) -> list["Record"]:
+    def get_referenced_records_by_upload(self, id: str, **kwargs) -> list["Record"]:
         response = self._client.request(
             "GET",
             f"uploads/{id}/references",
@@ -352,10 +339,7 @@ class Client(BaseClient):
         )
         return self._handle_data_response(response)
 
-    def list_tags(
-        self,
-        **kwargs: "Unpack[ListTagsWithPaginationParams]",
-    ) -> "tuple[list[UploadTag], int]":
+    def list_tags(self, **kwargs) -> "tuple[list[UploadTag], int]":
         self._page_params(
             params := {}, offset=kwargs.get("offset"), limit=kwargs.get("limit")
         )
@@ -369,9 +353,7 @@ class Client(BaseClient):
         return self._handle_list_response(response)
 
     def iter_tags(
-        self,
-        page_size: "int | None" = None,
-        **kwargs: "Unpack[IterTagsParams]",
+        self, page_size: "int | None" = None, **kwargs
     ) -> "Generator[UploadTag, None, None]":
         return self._iter_paginated(
             lambda offset, limit: self.list_tags(
@@ -379,3 +361,22 @@ class Client(BaseClient):
             ),
             page_size,
         )
+
+    def list_upload_collections(self, **kwargs) -> "list[UploadCollection]":
+        params = {}
+        self._page_params(
+            params, limit=kwargs.get("limit"), offset=kwargs.get("offset")
+        )
+        self._filter_params(
+            params,
+            ids=kwargs.get("ids"),
+        )
+
+        response = self._client.request(
+            "GET",
+            "upload-collections",
+            params=params,
+            headers=self._api_headers,
+            timeout=kwargs.get("timeout") or USE_CLIENT_DEFAULT,
+        )
+        return self._handle_data_response(response)

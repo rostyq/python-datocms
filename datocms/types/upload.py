@@ -1,7 +1,7 @@
-from typing import TypedDict, Literal, Any, NewType
+from typing import TypedDict, Literal, Any, NewType, NotRequired
 
 from datocms.types.locale import Localized
-from .relationships import CreatorRelationships
+from .relationships import CreatorRelationships, UploadCollectionRelationship
 
 
 __all__ = [
@@ -19,7 +19,12 @@ __all__ = [
     "UploadPermissionAttributes",
     "ManualUploadTag",
     "SmartUploadTag",
-    "Attributes"
+    "Attributes",
+    "UploadCollection",
+    "UploadCollectionId",
+    "UploadCollectionAttributes",
+    "UploadCollectionRelationships",
+    "UploadRelationships",
 ]
 
 UploadId = NewType("UploadId", str)
@@ -73,6 +78,29 @@ class UploadAttributes(TypedDict):
     colors: list[Color]
 
 
+# Upload Collection types
+UploadCollectionId = NewType("UploadCollectionId", str)
+
+
+class UploadCollectionAttributes(TypedDict):
+    label: str
+    position: NotRequired[int]
+
+
+class UploadCollectionData(TypedDict):
+    id: UploadCollectionId
+    type: Literal["upload_collection"]
+
+
+class UploadCollectionReference(TypedDict):
+    data: UploadCollectionData | None
+
+
+# Upload relationships with upload collection
+class UploadRelationships(CreatorRelationships):
+    upload_collection: UploadCollectionReference
+
+
 UploadTypeName = Literal["upload"]
 
 
@@ -80,7 +108,7 @@ class Upload(TypedDict):
     id: UploadId
     type: UploadTypeName
     attributes: UploadAttributes
-    relationships: CreatorRelationships
+    relationships: UploadRelationships
 
 
 UploadTagId = NewType("UploadTagId", str)
@@ -113,3 +141,15 @@ class UploadPermission(TypedDict):
     id: str
     type: Literal["upload_request"]
     attributes: UploadPermissionAttributes
+
+
+class UploadCollectionRelationships(TypedDict, total=False):
+    parent: UploadCollectionReference
+    children: list[UploadCollectionData]
+
+
+class UploadCollection(TypedDict):
+    id: UploadCollectionId
+    type: Literal["upload_collection"]
+    attributes: UploadCollectionAttributes
+    relationships: NotRequired[UploadCollectionRelationships]
