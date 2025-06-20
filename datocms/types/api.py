@@ -38,8 +38,9 @@ __all__ = [
     "CreateUploadParams",
     "CreateUploadJobParams",
     "PollJobParams",
-    "ListTagsParams",
-    "IterTagsParams",
+    "ListTagsParams",    "IterTagsParams",
+    "GetReferencedRecordsByUploadParams",
+    "CreateTagParams",
     # Union types with pagination
     "ListRecordsWithPaginationParams",
     "ListUploadsWithPaginationParams",
@@ -221,6 +222,15 @@ class ListTagsParams(TypedDict, total=False):
 
 class IterTagsParams(TypedDict, total=False):
     tag: TagType
+
+
+class GetReferencedRecordsByUploadParams(TypedDict, total=False):
+    nested: bool
+    version: AnyVersion | None
+
+
+class CreateTagParams(TypedDict):
+    name: str
 
 
 class ListRecordsWithPaginationParams(ListRecordsParams, PaginationParams, total=False):

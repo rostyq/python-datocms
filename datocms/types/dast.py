@@ -12,7 +12,7 @@ __all__ = [
     "InlineNode",
     "Root",
     "RootNode",
-    "RootNodeType",
+    "RootChildType",
     "Paragraph",
     "ParagraphType",
     "Span",
@@ -44,6 +44,8 @@ __all__ = [
 ]
 
 
+DastSchemaType = Literal["dast"]
+RootNodeType = Literal["root"]
 ParagraphType = Literal["paragraph"]
 SpanType = Literal["span"]
 LinkType = Literal["link"]
@@ -57,7 +59,7 @@ CodeType = Literal["code"]
 BlockquoteType = Literal["blockquote"]
 BlockType = Literal["block"]
 ThematicBreakType = Literal["thematicBreak"]
-RootNodeType = Union[
+RootChildType = Union[
     ParagraphType,
     HeadingType,
     ListType,
@@ -67,7 +69,7 @@ RootNodeType = Union[
     ThematicBreakType,
 ]
 NodeType = Union[
-    RootNodeType,
+    RootChildType,
     LinkType,
     ItemLinkType,
     InlineItemType,
@@ -91,30 +93,34 @@ class MetaEntry(TypedDict):
     value: str
 
 
-class Span(TypedDict):
+class BaseNode(TypedDict):
+    type: NodeType
+
+
+class Span(BaseNode):
     type: SpanType
     value: str
     marks: NotRequired[Marks]
 
 
-class InlineBlock(TypedDict):
+class InlineBlock(BaseNode):
     type: InlineBlockType
     item: str
 
 
-class ItemLink(TypedDict):
+class ItemLink(BaseNode):
     type: ItemLinkType
     item: str
     meta: NotRequired[MetaEntry]
     children: list[Span]
 
 
-class InlineItem(TypedDict):
+class InlineItem(BaseNode):
     type: InlineItemType
     item: str
 
 
-class Link(TypedDict):
+class Link(BaseNode):
     type: LinkType
     url: str
     meta: NotRequired[list[MetaEntry]]
@@ -124,13 +130,13 @@ class Link(TypedDict):
 InlineNode = Union[Span, Link, ItemLink, InlineItem, InlineBlock]
 
 
-class Paragraph(TypedDict):
+class Paragraph(BaseNode):
     type: ParagraphType
     style: NotRequired[str]
     children: list[InlineNode]
 
 
-class Heading(TypedDict):
+class Heading(BaseNode):
     type: HeadingType
     level: HeaderLevel
     style: NotRequired[str]
@@ -140,36 +146,36 @@ class Heading(TypedDict):
 ListNode = Union["List", Paragraph]
 
 
-class ListItem(TypedDict):
+class ListItem(BaseNode):
     type: ListItemType
     children: list[ListNode]
 
 
-class List(TypedDict):
+class List(BaseNode):
     type: ListType
     style: ListStyle
     children: list[ListItem]
 
 
-class Code(TypedDict):
+class Code(BaseNode):
     type: CodeType
     code: str
     language: NotRequired[str]
     highlight: NotRequired[list[int]]
 
 
-class Blockquote(TypedDict):
+class Blockquote(BaseNode):
     type: BlockquoteType
     attribution: NotRequired[str]
     children: list[Paragraph]
 
 
-class Block(TypedDict):
+class Block(BaseNode):
     type: BlockType
     item: str
 
 
-class ThematicBreak(TypedDict):
+class ThematicBreak(BaseNode):
     type: ThematicBreakType
 
 
@@ -177,10 +183,10 @@ RootNode = Union[Paragraph, Heading, List, Code, Blockquote, Block, ThematicBrea
 
 
 class Root(TypedDict):
-    type: Literal["root"]
+    type: RootNodeType
     children: list[RootNode]
 
 
 class Document(TypedDict):
-    schema: Literal["dast"]
+    schema: DastSchemaType
     document: Root

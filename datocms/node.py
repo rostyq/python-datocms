@@ -1,8 +1,9 @@
-from enum import Enum, global_enum
 from typing import Self, TypeVar, ParamSpec, Callable, overload, TYPE_CHECKING, Literal
+from enum import Enum, global_enum
 from functools import wraps
 
-from .types.dast import NodeType, RootNode as _Node
+if TYPE_CHECKING:
+    from .types.dast import NodeType, RootNode as _Node
 
 
 __all__ = [
@@ -44,37 +45,37 @@ class Node(Enum):
     THEMATIC_BREAK = "thematicBreak"
 
     @classmethod
-    def get_typename(cls, node: _Node):
+    def get_typename(cls, node: "_Node"):
         name = node["type"]
         if name not in cls._member_names_:
             raise ValueError(f"Unknown node type: {name}")
         return name
 
     @classmethod
-    def from_dict(cls, data: _Node) -> Self:
+    def from_dict(cls, data: "_Node") -> Self:
         return cls._value2member_map_[cls.get_typename(data)]  # type: ignore
 
     @classmethod
-    def from_str(cls, name: NodeType) -> Self:
+    def from_str(cls, name: "NodeType") -> Self:
         try:
             return cls._value2member_map_[name]  # type: ignore
         except KeyError:
             raise KeyError(f"`{name}` is not a node type name.")
 
-    def check(self, node: _Node) -> _Node:
+    def check(self, node: "_Node") -> "_Node":
         if node["type"] != self.value:
             raise TypeError(f"Expected node type '{self.value}', got '{node['type']}'.")
         return node
     
     @overload
-    def ensure(self, func: Callable[[_Node], R]) -> Callable[[_Node], R]: ...
+    def ensure(self, func: Callable[["_Node"], R]) -> Callable[["_Node"], R]: ...
     
     @overload  
     def ensure(self, func: Callable[P, R]) -> Callable[P, R]: ...
 
     def ensure(self, func: Callable[..., R]) -> Callable[..., R]:
         @wraps(func)
-        def wrapper(node: _Node, *args: P.args, **kwargs: P.kwargs) -> R:
+        def wrapper(node: "_Node", *args: P.args, **kwargs: P.kwargs) -> R:
             return func(self.check(node), *args, **kwargs)
 
         return wrapper
